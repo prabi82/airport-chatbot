@@ -45,7 +45,7 @@ In Vercel project settings → Environment Variables, add:
 
 ```
 DATABASE_URL
-postgresql://neondb_owner:npg_FX5ySurgUmt8@ep-flat-cell-a8edph3u-pooler.eastus2.azure.neon.tech/neondb?sslmode=require
+postgresql://neondb_owner:npg_[YourPassword]@ep-flat-cell-a8edph3u-pooler.eastus2.azure.neon.tech/neondb?sslmode=require
 
 JWT_SECRET
 your-super-secret-jwt-key-make-it-very-long-and-random
