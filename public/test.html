@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oman Airports Chatbot Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #1e3a8a;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+        
+        .instructions {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        
+        .test-section h3 {
+            color: #1e40af;
+            margin-top: 0;
+        }
+        
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .test-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .test-btn:hover {
+            background: #2563eb;
+        }
+        
+        .api-info {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .api-info strong {
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✈️ Oman Airports Chatbot - Simple Test</h1>
+        <div class="status" id="status">🟡 Checking connection...</div>
+        
+        <div class="instructions">
+            <h3>📋 Test Instructions</h3>
+            <ol>
+                <li>Look for the <strong>blue chat button</strong> in the bottom-right corner</li>
+                <li>Click it to open the chat widget</li>
+                <li>Use the test buttons below or type your own messages</li>
+                <li>Test different scenarios and see real-time responses</li>
+            </ol>
+        </div>
+
+        <div class="test-section">
+            <h3>✈️ Flight Information Tests</h3>
+            <p>Test flight status queries with sample flights:</p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="sendTestMessage('WY123')">WY123 Status</button>
+                <button class="test-btn" onclick="sendTestMessage('OV456')">OV456 Status</button>
+                <button class="test-btn" onclick="sendTestMessage('EK123')">EK123 Status</button>
+                <button class="test-btn" onclick="sendTestMessage('What is the status of flight AB789?')">Custom Flight</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏢 Airport Services Tests</h3>
+            <p>Test queries about airport facilities and services:</p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="sendTestMessage('What facilities are available?')">Facilities</button>
+                <button class="test-btn" onclick="sendTestMessage('Tell me about airport services')">Services</button>
+                <button class="test-btn" onclick="sendTestMessage('Where can I find restaurants?')">Dining</button>
+                <button class="test-btn" onclick="sendTestMessage('Do you have WiFi?')">WiFi Info</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🅿️ Transportation Tests</h3>
+            <p>Test parking and transportation queries:</p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="sendTestMessage('How much does parking cost?')">Parking Rates</button>
+                <button class="test-btn" onclick="sendTestMessage('How do I get to the airport?')">Transportation</button>
+                <button class="test-btn" onclick="sendTestMessage('Is there taxi service?')">Taxi Info</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>👋 Conversation Tests</h3>
+            <p>Test natural language interaction:</p>
+            <div class="test-buttons">
+                <button class="test-btn" onclick="sendTestMessage('Hello')">Greeting</button>
+                <button class="test-btn" onclick="sendTestMessage('Good morning')">Morning Greeting</button>
+                <button class="test-btn" onclick="sendTestMessage('Can you help me?')">Ask for Help</button>
+            </div>
+        </div>
+
+        <div class="api-info" id="apiInfo">
+            <strong>API Configuration:</strong> <span id="apiUrl">Loading...</span>
+        </div>
+    </div>
+    
+    <script>
+        // Configure the chatbot with dynamic port detection
+        const currentPort = window.location.port || '3000';
+        const apiUrl = `http://localhost:${currentPort}/api`;
+        
+        window.omanairportsChatConfig = {
+            apiUrl: apiUrl,
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right'
+        };
+
+        // Update API info display
+        document.getElementById('apiUrl').textContent = apiUrl;
+        
+        // Test API connection
+        fetch(`${apiUrl}/chat/session`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ language: 'en' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('API connection successful:', data);
+            const status = document.getElementById('status');
+            status.innerHTML = '🟢 API Connected - Demo Ready';
+            status.style.background = '#10b981';
+        })
+        .catch(error => {
+            console.error('API connection failed:', error);
+            const status = document.getElementById('status');
+            status.innerHTML = '🔴 API Connection Error - Check Server';
+            status.style.background = '#ef4444';
+        });
+
+        // Function to send test messages
+        function sendTestMessage(message) {
+            setTimeout(() => {
+                if (window.OmanAirportsChatWidget) {
+                    const widget = document.querySelector('#omanairports-chat-widget');
+                    if (widget) {
+                        if (!widget.classList.contains('chat-widget--open')) {
+                            document.getElementById('omanairports-chat-button')?.click();
+                        }
+                        
+                        setTimeout(() => {
+                            const input = document.getElementById('chat-widget-input');
+                            if (input) {
+                                input.value = message;
+                                document.getElementById('chat-widget-send')?.click();
+                            }
+                        }, 300);
+                    }
+                }
+            }, 100);
+        }
+    </script>
+    
+    <!-- Load the chatbot widget -->
+    <script src="/widget/chat-widget.js"></script>
+</body>
+</html> 

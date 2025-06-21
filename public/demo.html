@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oman Airports AI Chatbot - Interactive Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #10b981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .demo-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .demo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .demo-card h3 {
+            color: #1e3a8a;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .demo-card p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .test-btn {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .instructions {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .instructions h2 {
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .chat-indicator {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            animation: bounce 2s infinite;
+            z-index: 9997;
+            max-width: 200px;
+            text-align: center;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chat-indicator {
+                bottom: 80px;
+                right: 20px;
+                font-size: 0.8rem;
+                padding: 12px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✈️ Oman Airports AI Chatbot</h1>
+            <p>Interactive Demo - Experience the Future of Airport Assistance</p>
+            <div class="status">
+                <span>🟢</span> Demo Mode Active
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h2>🚀 How to Test the Demo</h2>
+            <ol>
+                <li>Look for the <strong>blue chat button</strong> in the bottom-right corner</li>
+                <li>Click it to open the chat widget</li>
+                <li>Try the sample questions below or type your own</li>
+                <li>Experience real-time responses and smooth animations</li>
+                <li>Test different scenarios to see the AI in action</li>
+            </ol>
+        </div>
+
+        <div class="demo-grid">
+            <div class="demo-card">
+                <h3>✈️ Flight Information</h3>
+                <p>Test flight status queries with real-time information display</p>
+                <div class="test-buttons">
+                    <button class="test-btn" onclick="sendTestMessage('WY123')">WY123 Status</button>
+                    <button class="test-btn" onclick="sendTestMessage('OV456')">OV456 Status</button>
+                    <button class="test-btn" onclick="sendTestMessage('EK123')">EK123 Status</button>
+                    <button class="test-btn" onclick="sendTestMessage('What is the status of flight AB789?')">Custom Flight</button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🏢 Airport Services</h3>
+                <p>Explore comprehensive airport facilities and amenities</p>
+                <div class="test-buttons">
+                    <button class="test-btn" onclick="sendTestMessage('What facilities are available?')">Facilities</button>
+                    <button class="test-btn" onclick="sendTestMessage('Tell me about airport services')">Services</button>
+                    <button class="test-btn" onclick="sendTestMessage('Where can I find restaurants?')">Dining</button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🅿️ Parking & Transportation</h3>
+                <p>Get detailed information about parking and transport options</p>
+                <div class="test-buttons">
+                    <button class="test-btn" onclick="sendTestMessage('How much does parking cost?')">Parking Rates</button>
+                    <button class="test-btn" onclick="sendTestMessage('How do I get to the airport?')">Transportation</button>
+                    <button class="test-btn" onclick="sendTestMessage('Is there taxi service?')">Taxi Info</button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🛂 Security & Check-in</h3>
+                <p>Learn about security procedures and check-in requirements</p>
+                <div class="test-buttons">
+                    <button class="test-btn" onclick="sendTestMessage('What items are prohibited?')">Prohibited Items</button>
+                    <button class="test-btn" onclick="sendTestMessage('When should I arrive for check-in?')">Check-in Time</button>
+                    <button class="test-btn" onclick="sendTestMessage('Tell me about security procedures')">Security Info</button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>👋 Conversational AI</h3>
+                <p>Experience natural language interaction with the AI assistant</p>
+                <div class="test-buttons">
+                    <button class="test-btn" onclick="sendTestMessage('Hello')">Greeting</button>
+                    <button class="test-btn" onclick="sendTestMessage('Good morning')">Morning Greeting</button>
+                    <button class="test-btn" onclick="sendTestMessage('Can you help me?')">Ask for Help</button>
+                </div>
+            </div>
+
+            <div class="demo-card">
+                <h3>🔍 Custom Queries</h3>
+                <p>Test the AI's ability to handle various types of questions</p>
+                <div class="test-buttons">
+                    <button class="test-btn" onclick="sendTestMessage('What time does the airport open?')">Opening Hours</button>
+                    <button class="test-btn" onclick="sendTestMessage('Where is the prayer room?')">Prayer Room</button>
+                    <button class="test-btn" onclick="sendTestMessage('Do you have WiFi?')">WiFi Info</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-indicator" id="chatIndicator">
+        👆 Click the chat button to start!
+    </div>
+
+    <script>
+        // Configure the chatbot - dynamically detect the port
+        const currentPort = window.location.port || '3000';
+        const apiUrl = `http://localhost:${currentPort}/api`;
+        
+        window.omanairportsChatConfig = {
+            apiUrl: apiUrl,
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right'
+        };
+
+        console.log('Chatbot configured with API URL:', apiUrl);
+
+        // Function to send test messages
+        function sendTestMessage(message) {
+            // Wait for widget to be available
+            setTimeout(() => {
+                if (window.OmanAirportsChatWidget) {
+                    // Find the widget instance or create one
+                    const widget = document.querySelector('#omanairports-chat-widget');
+                    if (widget) {
+                        // Open the widget if it's not open
+                        if (!widget.classList.contains('chat-widget--open')) {
+                            document.getElementById('omanairports-chat-button')?.click();
+                        }
+                        
+                        // Add the message to the input
+                        setTimeout(() => {
+                            const input = document.getElementById('chat-widget-input');
+                            if (input) {
+                                input.value = message;
+                                // Trigger the send
+                                document.getElementById('chat-widget-send')?.click();
+                            }
+                        }, 300);
+                    }
+                }
+            }, 100);
+        }
+
+        // Hide chat indicator when widget is opened
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'omanairports-chat-button') {
+                setTimeout(() => {
+                    const indicator = document.getElementById('chatIndicator');
+                    if (indicator) {
+                        indicator.style.display = 'none';
+                    }
+                }, 500);
+            }
+        });
+
+        // Test API connection when page loads
+        window.addEventListener('load', function() {
+            fetch(`${apiUrl}/chat/session`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ language: 'en' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('API connection successful:', data);
+                // Update status indicator
+                const status = document.querySelector('.status');
+                if (status) {
+                    status.innerHTML = '<span>🟢</span> Demo Active - API Connected';
+                }
+            })
+            .catch(error => {
+                console.error('API connection failed:', error);
+                // Update status indicator
+                const status = document.querySelector('.status');
+                if (status) {
+                    status.innerHTML = '<span>🔴</span> API Connection Error';
+                    status.style.background = '#ef4444';
+                }
+                
+                // Show error message
+                const indicator = document.getElementById('chatIndicator');
+                if (indicator) {
+                    indicator.innerHTML = '⚠️ Check if server is running on port ' + currentPort;
+                    indicator.style.background = '#ef4444';
+                }
+            });
+        });
+    </script>
+    
+    <!-- Load the chatbot widget -->
+    <script src="/widget/chat-widget.js"></script>
+</body>
+</html> 
