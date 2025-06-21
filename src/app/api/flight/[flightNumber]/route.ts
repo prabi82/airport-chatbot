@@ -84,10 +84,11 @@ const mockFlights: Record<string, any> = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { flightNumber: string } }
+  { params }: { params: Promise<{ flightNumber: string }> }
 ) {
   try {
-    const flightNumber = params.flightNumber.toUpperCase();
+    const resolvedParams = await params;
+    const flightNumber = resolvedParams.flightNumber.toUpperCase();
     
     // Check if we have mock data for this flight
     const flightData = mockFlights[flightNumber];
