@@ -7,7 +7,6 @@ export interface KnowledgeBaseEntry {
   question: string;
   answer: string;
   keywords: string[];
-  language: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -27,23 +26,23 @@ export class KnowledgeBaseService {
   async search(query: string, language: string = 'en', limit: number = 5): Promise<SearchResult[]> {
     await this.ensureCacheUpdated();
     
-    const entries = this.cache.get(language) || [];
+    const entries = this.cache.get('default') || [];
     const results: SearchResult[] = [];
 
-    for (const entry of entries) {
-      if (!entry.isActive) continue;
+    entries.forEach(entry => {
+      if (!entry.isActive) return;
 
       const relevance = this.calculateRelevance(query, entry);
-      if (relevance > 0.3) { // Minimum relevance threshold
+      if (relevance > 0.1) { // Minimum threshold
         results.push({
           entry,
           relevance,
           confidence: this.calculateConfidence(relevance, entry)
         });
       }
-    }
+    });
 
-    // Sort by relevance and return top results
+    // Sort by relevance (descending) and return top results
     return results
       .sort((a, b) => b.relevance - a.relevance)
       .slice(0, limit);
@@ -57,7 +56,7 @@ export class KnowledgeBaseService {
   async getByCategory(category: string, language: string = 'en'): Promise<KnowledgeBaseEntry[]> {
     await this.ensureCacheUpdated();
     
-    const entries = this.cache.get(language) || [];
+    const entries = this.cache.get('default') || [];
     return entries.filter(entry => 
       entry.isActive && 
       entry.category.toLowerCase() === category.toLowerCase()
@@ -72,7 +71,6 @@ export class KnowledgeBaseService {
         question: entry.question,
         answer: entry.answer,
         keywords: entry.keywords,
-        language: entry.language,
         isActive: entry.isActive
       }
     });
@@ -87,7 +85,6 @@ export class KnowledgeBaseService {
       question: created.question,
       answer: created.answer,
       keywords: created.keywords as string[],
-      language: created.language,
       isActive: created.isActive,
       createdAt: created.createdAt,
       updatedAt: created.updatedAt
@@ -114,7 +111,6 @@ export class KnowledgeBaseService {
         question: updated.question,
         answer: updated.answer,
         keywords: updated.keywords as string[],
-        language: updated.language,
         isActive: updated.isActive,
         createdAt: updated.createdAt,
         updatedAt: updated.updatedAt
@@ -143,7 +139,7 @@ export class KnowledgeBaseService {
   async getCategories(language: string = 'en'): Promise<string[]> {
     await this.ensureCacheUpdated();
     
-    const entries = this.cache.get(language) || [];
+    const entries = this.cache.get('default') || [];
     const categories = new Set<string>();
     
     entries.forEach(entry => {
@@ -158,7 +154,7 @@ export class KnowledgeBaseService {
   async getSubcategories(category: string, language: string = 'en'): Promise<string[]> {
     await this.ensureCacheUpdated();
     
-    const entries = this.cache.get(language) || [];
+    const entries = this.cache.get('default') || [];
     const subcategories = new Set<string>();
     
     entries.forEach(entry => {
@@ -186,30 +182,20 @@ export class KnowledgeBaseService {
         orderBy: { createdAt: 'desc' }
       });
 
-      // Group by language
-      const entriesByLanguage = new Map<string, KnowledgeBaseEntry[]>();
-      
-      entries.forEach((entry: any) => {
-        const kbEntry: KnowledgeBaseEntry = {
-          id: entry.id,
-          category: entry.category,
-          subcategory: entry.subcategory || undefined,
-          question: entry.question,
-          answer: entry.answer,
-          keywords: entry.keywords as string[],
-          language: entry.language,
-          isActive: entry.isActive,
-          createdAt: entry.createdAt,
-          updatedAt: entry.updatedAt
-        };
+      // Store all entries under 'default' key
+      const kbEntries: KnowledgeBaseEntry[] = entries.map((entry: any) => ({
+        id: entry.id,
+        category: entry.category,
+        subcategory: entry.subcategory || undefined,
+        question: entry.question,
+        answer: entry.answer,
+        keywords: entry.keywords as string[],
+        isActive: entry.isActive,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt
+      }));
 
-        if (!entriesByLanguage.has(entry.language)) {
-          entriesByLanguage.set(entry.language, []);
-        }
-        entriesByLanguage.get(entry.language)!.push(kbEntry);
-      });
-
-      this.cache = entriesByLanguage;
+      this.cache.set('default', kbEntries);
       this.lastCacheUpdate = new Date();
     } catch (error) {
       console.error('Error updating knowledge base cache:', error);
@@ -316,7 +302,6 @@ export class KnowledgeBaseService {
         question: 'How do I check my flight status?',
         answer: 'You can check your flight status by providing your flight number (e.g., WY123) or by visiting the flight information displays throughout the airport.',
         keywords: ['flight status', 'check flight', 'flight information'],
-        language: 'en',
         isActive: true
       },
       {
@@ -324,7 +309,6 @@ export class KnowledgeBaseService {
         question: 'Where can I find WiFi at the airport?',
         answer: 'Free WiFi is available throughout all terminals. Connect to "OmanAirports_Free_WiFi" network and follow the instructions to get online.',
         keywords: ['wifi', 'internet', 'connection', 'free wifi'],
-        language: 'en',
         isActive: true
       },
       {
@@ -332,7 +316,6 @@ export class KnowledgeBaseService {
         question: 'How do I get a taxi from the airport?',
         answer: 'Official airport taxis are available outside all terminals 24/7. You can also use ride-hailing apps like Careem and Uber.',
         keywords: ['taxi', 'transportation', 'careem', 'uber', 'ride'],
-        language: 'en',
         isActive: true
       },
       {
@@ -340,7 +323,6 @@ export class KnowledgeBaseService {
         question: 'Where are the prayer rooms located?',
         answer: 'Prayer rooms are available in all terminals. Look for the prayer room signs or ask at the information desk for directions.',
         keywords: ['prayer room', 'mosque', 'religious', 'prayer'],
-        language: 'en',
         isActive: true
       },
       {
@@ -348,7 +330,6 @@ export class KnowledgeBaseService {
         question: 'What should I do if my baggage is lost?',
         answer: 'Report lost baggage immediately at the baggage claim area. Our staff will help you file a report and track your luggage.',
         keywords: ['lost baggage', 'missing luggage', 'baggage claim'],
-        language: 'en',
         isActive: true
       },
       {
@@ -356,7 +337,6 @@ export class KnowledgeBaseService {
         question: 'What items are not allowed in carry-on luggage?',
         answer: 'Liquids over 100ml, sharp objects, and flammable items are not allowed in carry-on. Check the security guidelines for a complete list.',
         keywords: ['security', 'prohibited items', 'carry-on', 'banned items'],
-        language: 'en',
         isActive: true
       },
       {
@@ -364,7 +344,6 @@ export class KnowledgeBaseService {
         question: 'When should I arrive at the airport for my flight?',
         answer: 'Arrive 2 hours early for domestic flights and 3 hours early for international flights to allow time for check-in and security.',
         keywords: ['check-in time', 'arrival time', 'how early'],
-        language: 'en',
         isActive: true
       },
       {
@@ -372,7 +351,6 @@ export class KnowledgeBaseService {
         question: 'Are there restaurants and shops at the airport?',
         answer: 'Yes, all terminals have restaurants, cafes, duty-free shops, and retail stores offering local and international options.',
         keywords: ['restaurants', 'food', 'shops', 'duty free', 'dining'],
-        language: 'en',
         isActive: true
       }
     ];
@@ -382,8 +360,7 @@ export class KnowledgeBaseService {
         // Check if entry already exists
         const existing = await prisma.knowledgeBase.findFirst({
           where: {
-            question: entry.question,
-            language: entry.language
+            question: entry.question
           }
         });
 

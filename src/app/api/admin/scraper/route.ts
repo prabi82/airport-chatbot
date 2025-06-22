@@ -11,11 +11,11 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'scrape_all':
-        const allResults = await webScraper.scrapeAllSources();
+        const results = await webScraper.scrapeAllSources();
         return NextResponse.json({
           success: true,
-          message: `Scraped ${allResults.length} items from all sources`,
-          results: allResults.map(r => ({
+          message: 'Scraping completed successfully',
+          results: results.map(r => ({
             source: r.source,
             title: r.title,
             category: r.category,
@@ -117,7 +117,7 @@ async function getCacheStatistics() {
     const expired = total - active;
 
     const bySource = await prisma.scrapingCache.groupBy({
-      by: ['sourceUrl'],
+      by: ['url'],
       where: {
         expiresAt: { gt: new Date() }
       },
@@ -131,10 +131,10 @@ async function getCacheStatistics() {
         expiresAt: { gt: new Date() }
       },
       orderBy: {
-        createdAt: 'asc'
+        lastScraped: 'asc'
       },
       select: {
-        createdAt: true
+        lastScraped: true
       }
     });
 
@@ -143,10 +143,10 @@ async function getCacheStatistics() {
         expiresAt: { gt: new Date() }
       },
       orderBy: {
-        createdAt: 'desc'
+        lastScraped: 'desc'
       },
       select: {
-        createdAt: true
+        lastScraped: true
       }
     });
 
@@ -155,11 +155,11 @@ async function getCacheStatistics() {
       active,
       expired,
       bySource: bySource.map((item: any) => ({
-        source: item.sourceUrl,
+        source: item.url,
         count: item._count.id
       })),
-      oldestEntry: oldestEntry?.createdAt,
-      newestEntry: newestEntry?.createdAt
+      oldestEntry: oldestEntry?.lastScraped,
+      newestEntry: newestEntry?.lastScraped
     };
 
   } catch (error) {
@@ -182,32 +182,31 @@ async function getCachedContent(limit: number, category?: string | null) {
     };
 
     if (category) {
-      whereClause.scrapedData = {
-        path: ['category'],
-        equals: category
+      whereClause.content = {
+        contains: category
       };
     }
 
     const cached = await prisma.scrapingCache.findMany({
       where: whereClause,
       orderBy: {
-        createdAt: 'desc'
+        lastScraped: 'desc'
       },
       take: limit,
       select: {
         id: true,
-        sourceUrl: true,
-        scrapedData: true,
-        createdAt: true,
+        url: true,
+        content: true,
+        lastScraped: true,
         expiresAt: true
       }
     });
 
     return cached.map((item: any) => ({
       id: item.id,
-      sourceUrl: item.sourceUrl,
-      data: item.scrapedData,
-      createdAt: item.createdAt,
+      url: item.url,
+      content: item.content,
+      lastScraped: item.lastScraped,
       expiresAt: item.expiresAt
     }));
 

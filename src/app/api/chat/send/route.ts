@@ -293,7 +293,7 @@ async function getOrCreateSession(sessionId: string | undefined, request: NextRe
   return await prisma.chatSession.create({
     data: {
       sessionId: crypto.randomUUID(),
-      userIp: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
       userAgent: request.headers.get('user-agent') || '',
       language: request.headers.get('accept-language')?.split(',')[0] || 'en',
     }
@@ -357,13 +357,25 @@ Could you please rephrase your question or ask about one of these topics?`;
 }
 
 async function storeMessage(sessionId: string, type: string, content: string, intent?: string, responseTime?: number) {
-  await prisma.chatMessage.create({
-    data: {
-      sessionId,
-      messageType: type,
-      content,
-      intent,
-      responseTimeMs: responseTime,
-    }
-  });
+  if (type === 'user') {
+    await prisma.chatMessage.create({
+      data: {
+        sessionId,
+        message: content,
+        response: '', // Empty for user messages
+        queryType: intent,
+        processingTime: responseTime,
+      }
+    });
+  } else {
+    await prisma.chatMessage.create({
+      data: {
+        sessionId,
+        message: '', // Empty for bot messages
+        response: content,
+        queryType: intent,
+        processingTime: responseTime,
+      }
+    });
+  }
 } 

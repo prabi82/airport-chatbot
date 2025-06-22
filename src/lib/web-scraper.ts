@@ -329,8 +329,7 @@ export class WebScraperService {
     try {
       return await prisma.scrapingCache.findFirst({
         where: {
-          sourceUrl: url,
-          contentHash,
+          url: url,
           expiresAt: { gt: new Date() }
         }
       });
@@ -344,16 +343,15 @@ export class WebScraperService {
     try {
       await prisma.scrapingCache.create({
         data: {
-          sourceUrl: content.url,
-          contentHash: content.contentHash,
-          scrapedData: {
+          url: content.url,
+          content: JSON.stringify({
             title: content.title,
             content: content.content,
             category: content.category,
             language: content.language,
             relevance: content.relevance,
             source: content.source
-          },
+          }),
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
         }
       });
@@ -427,7 +425,7 @@ export class WebScraperService {
           const data = item.scrapedData as any;
           return {
             title: data.title,
-            url: item.sourceUrl,
+            url: item.url,
             content: data.content,
             relevance: this.calculateQueryRelevance(data.content, query),
             source: data.source,
@@ -682,13 +680,13 @@ export class WebScraperService {
           headingText.includes('route') || headingText.includes('highway')) {
         const content = this.extractContentAfterHeading($, element);
         if (content.trim()) {
-          scrapedData.push({
-            title: 'Access Road and Directions',
-            content: content,
-            url: url,
-            relevance: 0.95,
-            category: 'access_road'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Access Road and Directions',
+            content,
+            url,
+            0.95,
+            'access_road'
+          ));
         }
       }
     });
@@ -700,13 +698,13 @@ export class WebScraperService {
           (text.toLowerCase().includes('highway') || text.toLowerCase().includes('road'))) {
         const content = this.cleanText(text);
         if (content.length > 50) { // Only include substantial content
-          scrapedData.push({
-            title: 'Sultan Qaboos Highway Directions',
-            content: content,
-            url: url,
-            relevance: 0.9,
-            category: 'directions'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Sultan Qaboos Highway Directions',
+            content,
+            url,
+            0.9,
+            'directions'
+          ));
         }
       }
     });
@@ -719,13 +717,13 @@ export class WebScraperService {
         const content = this.extractContentAfterHeading($, element);
         if (content.trim()) {
           const title = $(element).text().trim() || 'Directions';
-          scrapedData.push({
-            title: title,
-            content: content,
-            url: url,
-            relevance: 0.92,
-            category: 'directions'
-          });
+          scrapedData.push(this.createScrapedContent(
+            title,
+            content,
+            url,
+            0.92,
+            'directions'
+          ));
         }
       }
     });
@@ -742,26 +740,26 @@ export class WebScraperService {
         if (headingText.includes('parking') || headingText.includes('car parking')) {
           const content = this.extractContentAfterHeading($, element);
           if (content.trim()) {
-            scrapedData.push({
-              title: 'Car Parking Information',
-              content: content,
-              url: url,
-              relevance: 0.9,
-              category: 'parking'
-            });
+            scrapedData.push(this.createScrapedContent(
+              'Car Parking Information',
+              content,
+              url,
+              0.9,
+              'parking'
+            ));
           }
         }
       });
     } else {
       const content = this.cleanText(parkingSection.text());
       if (content) {
-        scrapedData.push({
-          title: 'Car Parking Information',
-          content: content,
-          url: url,
-          relevance: 0.9,
-          category: 'parking'
-        });
+        scrapedData.push(this.createScrapedContent(
+          'Car Parking Information',
+          content,
+          url,
+          0.9,
+          'parking'
+        ));
       }
     }
 
@@ -771,13 +769,13 @@ export class WebScraperService {
       if (tableText.includes('parking') && (tableText.includes('omr') || tableText.includes('tariff'))) {
         const tableContent = this.extractTableData($, table);
         if (tableContent) {
-          scrapedData.push({
-            title: 'Parking Rates and Tariffs',
-            content: tableContent,
-            url: url,
-            relevance: 0.95,
-            category: 'parking'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Parking Rates and Tariffs',
+            tableContent,
+            url,
+            0.95,
+            'parking'
+          ));
         }
       }
     });
@@ -789,13 +787,13 @@ export class WebScraperService {
       if (headingText.includes('taxi')) {
         const content = this.extractContentAfterHeading($, element);
         if (content.trim()) {
-          scrapedData.push({
-            title: 'Taxi Services',
-            content: content,
-            url: url,
-            relevance: 0.9,
-            category: 'taxi'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Taxi Services',
+            content,
+            url,
+            0.9,
+            'taxi'
+          ));
         }
       }
     });
@@ -807,13 +805,13 @@ export class WebScraperService {
       if (headingText.includes('car rental') || headingText.includes('rental')) {
         const content = this.extractContentAfterHeading($, element);
         if (content.trim()) {
-          scrapedData.push({
-            title: 'Car Rental Services',
-            content: content,
-            url: url,
-            relevance: 0.85,
-            category: 'car_rental'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Car Rental Services',
+            content,
+            url,
+            0.85,
+            'car_rental'
+          ));
         }
       }
     });
@@ -824,13 +822,13 @@ export class WebScraperService {
       if (tableText.includes('company') && (tableText.includes('contact') || tableText.includes('phone'))) {
         const tableContent = this.extractTableData($, table);
         if (tableContent) {
-          scrapedData.push({
-            title: 'Car Rental Companies',
-            content: tableContent,
-            url: url,
-            relevance: 0.9,
-            category: 'car_rental'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Car Rental Companies',
+            tableContent,
+            url,
+            0.9,
+            'car_rental'
+          ));
         }
       }
     });
@@ -842,13 +840,13 @@ export class WebScraperService {
       if (headingText.includes('shuttle') || headingText.includes('bus')) {
         const content = this.extractContentAfterHeading($, element);
         if (content.trim()) {
-          scrapedData.push({
-            title: 'Shuttle Bus Services',
-            content: content,
-            url: url,
-            relevance: 0.85,
-            category: 'shuttle'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Shuttle Bus Services',
+            content,
+            url,
+            0.85,
+            'shuttle'
+          ));
         }
       }
     });
@@ -861,30 +859,13 @@ export class WebScraperService {
       if (headingText.includes('pick up') || headingText.includes('drop-off') || headingText.includes('drop off')) {
         const content = this.extractContentAfterHeading($, element);
         if (content.trim()) {
-          scrapedData.push({
-            title: 'Pick-up and Drop-off Information',
-            content: content,
-            url: url,
-            relevance: 0.8,
-            category: 'pickup_dropoff'
-          });
-        }
-      }
-    });
-
-    // Extract access road information
-    $('h1, h2, h3, h4, h5, h6').each((_, element) => {
-      const headingText = $(element).text().toLowerCase();
-      if (headingText.includes('access road') || headingText.includes('directions')) {
-        const content = this.extractContentAfterHeading($, element);
-        if (content.trim()) {
-          scrapedData.push({
-            title: 'Access Roads and Directions',
-            content: content,
-            url: url,
-            relevance: 0.75,
-            category: 'directions'
-          });
+          scrapedData.push(this.createScrapedContent(
+            'Pick-up and Drop-off Information',
+            content,
+            url,
+            0.8,
+            'pickup_dropoff'
+          ));
         }
       }
     });
@@ -957,7 +938,7 @@ export class WebScraperService {
 
     // Filter content based on query relevance
     for (const item of result.data) {
-      const relevance = this.calculateQueryRelevance(queryLower, item);
+      const relevance = this.calculateQueryRelevance(item.content, queryLower);
       if (relevance > 0.3) {
         relevantContent.push({
           ...item,
