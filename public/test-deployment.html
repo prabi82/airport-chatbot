@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Deployed API</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .response { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 3px; white-space: pre-wrap; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛫 Test Deployed Chatbot API</h1>
+        
+        <div class="test-section">
+            <h3>Deployment URL:</h3>
+            <p><strong>https://airport-chatbot-h0w0uwqn1-prabikrishna-gmailcoms-projects.vercel.app</strong></p>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Queries:</h3>
+            <button onclick="testQuery('How do I reach the airport from Burj Al Sahwa roundabout?')">Test Directions</button>
+            <button onclick="testQuery('Is public transportation available from Muscat Airport?')">Test Public Transport</button>
+            <button onclick="testQuery('What are the parking rates?')">Test Parking</button>
+            <button onclick="testQuery('Hello')">Test Greeting</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Response:</h3>
+            <div id="response" class="response">Click a button to test...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>Custom Query:</h3>
+            <input type="text" id="customQuery" placeholder="Enter your question..." style="width: 70%; padding: 8px;">
+            <button onclick="testCustomQuery()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://airport-chatbot-h0w0uwqn1-prabikrishna-gmailcoms-projects.vercel.app/api/chat/send';
+        
+        async function testQuery(message) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = 'Testing...';
+            responseDiv.className = 'response';
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        sessionId: 'test-' + Date.now()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                responseDiv.textContent = `✅ SUCCESS\n\nQuery: ${message}\n\nResponse: ${data.response || JSON.stringify(data, null, 2)}`;
+                responseDiv.className = 'response success';
+                
+            } catch (error) {
+                responseDiv.textContent = `❌ ERROR\n\nQuery: ${message}\n\nError: ${error.message}`;
+                responseDiv.className = 'response error';
+            }
+        }
+        
+        function testCustomQuery() {
+            const query = document.getElementById('customQuery').value;
+            if (query.trim()) {
+                testQuery(query);
+            }
+        }
+        
+        // Test on page load
+        window.onload = function() {
+            testQuery('Hello, is the chatbot working?');
+        };
+    </script>
+</body>
+</html> 
