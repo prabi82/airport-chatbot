@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formatting Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-input {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .test-output {
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 10px 0;
+            min-height: 50px;
+        }
+        .chat-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .chat-link:hover {
+            color: #1d4ed8;
+            border-bottom-color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin: -2px -4px;
+        }
+        .step {
+            background: #e3f2fd;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Formatting Debug Test</h1>
+        
+        <div class="test-section">
+            <h3>Step-by-Step Processing Debug</h3>
+            <div id="step-by-step-debug"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Final Formatted Output</h3>
+            <div class="test-input" id="raw-input"></div>
+            <div class="test-output" id="formatted-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Direct innerHTML Test</h3>
+            <div class="test-output" id="direct-test"></div>
+        </div>
+
+        <button onclick="runDebugTest()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Run Debug Test
+        </button>
+    </div>
+
+    <script>
+        function formatMessageContent(content) {
+            console.log('🔍 Input content:', content);
+            
+            // Step 1: Convert markdown links to HTML links FIRST
+            let processed = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>');
+            
+            // Step 2: Convert line breaks to <br> tags
+            processed = processed.replace(/\n/g, '<br>');
+            
+            // Step 3: Convert **text** to bold (but be careful not to break links)
+            processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            
+            // Step 4: Convert bullet points
+            processed = processed.replace(/<br>\s*-\s*/g, '<br>• ');
+            processed = processed.replace(/^-\s*/g, '• ');
+            
+            // Step 5: Add some spacing around sections
+            processed = processed.replace(/(\d+\.\d+)\s*<br>/g, '$1<br><br>');
+            
+            console.log('🔍 Processed content:', processed);
+            
+            return processed;
+        }
+
+        function debugStepByStep(content) {
+            const steps = [];
+            let current = content;
+            
+            steps.push({
+                step: 'Original Input',
+                content: current,
+                html: escapeHtml(current)
+            });
+            
+            // Step 1: Links
+            current = current.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>');
+            steps.push({
+                step: 'After Link Conversion',
+                content: current,
+                html: escapeHtml(current)
+            });
+            
+            // Step 2: Line breaks
+            current = current.replace(/\n/g, '<br>');
+            steps.push({
+                step: 'After Line Break Conversion',
+                content: current,
+                html: escapeHtml(current)
+            });
+            
+            // Step 3: Bold
+            current = current.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            steps.push({
+                step: 'After Bold Conversion',
+                content: current,
+                html: escapeHtml(current)
+            });
+            
+            // Step 4: Bullets
+            current = current.replace(/<br>\s*-\s*/g, '<br>• ');
+            current = current.replace(/^-\s*/g, '• ');
+            steps.push({
+                step: 'After Bullet Conversion',
+                content: current,
+                html: escapeHtml(current)
+            });
+            
+            return steps;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function runDebugTest() {
+            // Test with actual response format
+            const testInput = `Based on current information from Muscat Airport: The parking rate for 30 minutes at Muscat Airport is **OMR 0.600**. This applies to both P1 (Short Term) and P2 (Short Term & Premium) parking areas.
+
+🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+
+            // Show raw input
+            document.getElementById('raw-input').textContent = testInput;
+
+            // Step by step debug
+            const steps = debugStepByStep(testInput);
+            const debugContainer = document.getElementById('step-by-step-debug');
+            debugContainer.innerHTML = '';
+            
+            steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'step';
+                stepDiv.innerHTML = `
+                    <h4>Step ${index + 1}: ${step.step}</h4>
+                    <div style="font-family: monospace; font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px; margin: 5px 0;">
+                        ${step.html}
+                    </div>
+                    <div style="background: white; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin: 5px 0;">
+                        ${step.content}
+                    </div>
+                `;
+                debugContainer.appendChild(stepDiv);
+            });
+
+            // Final formatted output
+            const formatted = formatMessageContent(testInput);
+            document.getElementById('formatted-output').innerHTML = formatted;
+
+            // Direct innerHTML test
+            document.getElementById('direct-test').innerHTML = `
+                <p>Direct HTML test:</p>
+                <p><strong>Bold text</strong></p>
+                <p><a href="https://google.com" target="_blank" class="chat-link">Test Link</a></p>
+                <p>Line 1<br>Line 2</p>
+            `;
+
+            console.log('=== DEBUG RESULTS ===');
+            console.log('Input:', testInput);
+            console.log('Output:', formatted);
+            console.log('Output HTML:', escapeHtml(formatted));
+        }
+
+        // Auto-run on load
+        window.onload = runDebugTest;
+    </script>
+</body>
+</html> 

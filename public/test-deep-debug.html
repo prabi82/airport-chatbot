@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Link Debug Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .chat-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .chat-link:hover {
+            color: #1d4ed8;
+            border-bottom-color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin: -2px -4px;
+        }
+        
+        .debug-section {
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .result {
+            border: 2px solid #2563eb;
+            padding: 20px;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .code-block {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        
+        .source-link-container {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            font-size: 13px;
+        }
+        
+        .bullet-point {
+            margin: 2px 0;
+            padding-left: 8px;
+            line-height: 1.4;
+        }
+        
+        .section-header {
+            font-weight: 600;
+            color: #1e40af;
+            margin: 8px 0 4px 0;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Deep Link Debug Analysis</h1>
+    <p>Comprehensive investigation into why links aren't clickable</p>
+    
+    <div class="debug-section">
+        <h3>🎯 Problem Analysis</h3>
+        <p>From your screenshot, I can see:</p>
+        <ul>
+            <li class="success">✅ Bold formatting is working (**Quick Reference:** shows as bold)</li>
+            <li class="success">✅ Bullet points are structured properly</li>
+            <li class="success">✅ Text structure is preserved</li>
+            <li class="error">❌ Link shows as plain text: "More Information: [Muscat Airport Parking](https://...)"</li>
+        </ul>
+        <p><strong>This suggests the link processing is failing somewhere in the chain.</strong></p>
+    </div>
+    
+    <div class="debug-section">
+        <h3>🔍 Step-by-Step Investigation</h3>
+        <button onclick="runDeepDebug()">🚀 Run Deep Debug Analysis</button>
+        <div id="debug-results"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>🧪 Alternative Approaches Test</h3>
+        <button onclick="testAlternatives()">🔬 Test All Alternatives</button>
+        <div id="alternatives-results"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>🚀 Live Widget Integration Test</h3>
+        <button onclick="testLiveIntegration()">🎯 Test Live Widget</button>
+        <div id="live-results"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>📊 Console Logs</h3>
+        <div class="code-block" id="console-output"></div>
+    </div>
+
+    <script>
+        // Capture all console output
+        let consoleOutput = '';
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            const message = args.join(' ');
+            consoleOutput += `[LOG] ${message}\n`;
+            updateConsoleOutput();
+            originalLog.apply(console, arguments);
+        };
+        
+        console.error = function(...args) {
+            const message = args.join(' ');
+            consoleOutput += `[ERROR] ${message}\n`;
+            updateConsoleOutput();
+            originalError.apply(console, arguments);
+        };
+        
+        console.warn = function(...args) {
+            const message = args.join(' ');
+            consoleOutput += `[WARN] ${message}\n`;
+            updateConsoleOutput();
+            originalWarn.apply(console, arguments);
+        };
+        
+        function updateConsoleOutput() {
+            document.getElementById('console-output').textContent = consoleOutput;
+        }
+        
+        // Test content from your screenshot
+        const actualContent = `Based on current information from Muscat Airport: Based on the parking rates at Muscat Airport: **Quick Reference:** - **30 minutes**: OMR 0.600 - **1 hour**: OMR 1.100 - **2 hours**: OMR 2.100 - **3 hours**: OMR 3.200 Choose the time bracket that matches your parking duration. 🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+        
+        // Current formatMessageContent function (exact copy from widget)
+        function formatMessageContent(content) {
+            console.log('🔍 Processing content:', content);
+            
+            // Step 1: Normalize and structure the content first
+            let processed = content;
+            
+            // Add proper line breaks for better structure
+            processed = processed.replace(/(\w)\s*-\s*\*\*/g, '$1\n- **'); // Before bullet points
+            processed = processed.replace(/(\d+\.\d+)\s*-\s*/g, '$1\n- '); // After prices
+            processed = processed.replace(/duration\.\s*🔗/g, 'duration.\n\n🔗'); // Before source links
+            processed = processed.replace(/areas\.\s*🔗/g, 'areas.\n\n🔗'); // Before source links
+            
+            console.log('🔧 After structure fixes:', processed);
+            
+            // Step 2: Extract and protect markdown links
+            const linkPlaceholders = [];
+            let linkCounter = 0;
+            
+            processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                const placeholder = `__LINK_PLACEHOLDER_${linkCounter}__`;
+                linkPlaceholders[linkCounter] = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+                linkCounter++;
+                console.log(`🔗 Found link: "${text}" -> "${url}"`);
+                return placeholder;
+            });
+            
+            console.log('🔗 After link extraction:', processed);
+            console.log('🔗 Link placeholders array:', linkPlaceholders);
+            
+            // Step 3: Escape HTML content (but not our placeholders)
+            const div = document.createElement('div');
+            div.textContent = processed;
+            let escaped = div.innerHTML;
+            
+            console.log('🔒 After HTML escaping:', escaped);
+            
+            // Step 4: Convert line breaks to <br> tags
+            escaped = escaped.replace(/\n/g, '<br>');
+            
+            // Step 5: Convert **text** to bold
+            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            console.log('📝 After bold processing:', escaped);
+            
+            // Step 6: Convert bullet points with proper structure
+            escaped = escaped.replace(/<br>\s*-\s*/g, '<br><div class="bullet-point">• ');
+            escaped = escaped.replace(/(<div class="bullet-point">• [^<]*(?:<strong>[^<]*<\/strong>[^<]*)*[^<]*?)(<br>|$)/g, '$1</div>$2');
+            
+            // Step 7: Convert section headers
+            escaped = escaped.replace(/<strong>([^:]+):<\/strong>/g, '<div class="section-header">$1:</div>');
+            
+            // Step 8: Convert 🔗 pattern for better styling
+            escaped = escaped.replace(/🔗\s*<strong>([^<]+)<\/strong>/g, '<div class="source-link-container">🔗 <strong>$1</strong></div>');
+            
+            console.log('🎨 After styling processing:', escaped);
+            
+            // Step 9: Restore links by replacing placeholders
+            linkPlaceholders.forEach((linkHtml, index) => {
+                const placeholder = `__LINK_PLACEHOLDER_${index}__`;
+                console.log(`🔄 Attempting to restore: "${placeholder}" with "${linkHtml}"`);
+                const beforeReplace = escaped;
+                escaped = escaped.replace(placeholder, linkHtml);
+                const afterReplace = escaped;
+                console.log(`🔄 Replace successful: ${beforeReplace !== afterReplace}`);
+                console.log(`🔗 Restored link ${index}`);
+            });
+            
+            console.log('✨ Final result:', escaped);
+            return escaped;
+        }
+        
+        // Alternative approach 1: Simple regex replacement
+        function simpleMarkdownToHtml(content) {
+            console.log('🔧 ALTERNATIVE 1: Simple replacement');
+            return content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, 
+                '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>');
+        }
+        
+        // Alternative approach 2: DOM-based processing
+        function domBasedProcessing(content) {
+            console.log('🔧 ALTERNATIVE 2: DOM-based processing');
+            const div = document.createElement('div');
+            
+            // First, handle links
+            let processed = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, 
+                '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>');
+            
+            // Then handle other formatting
+            processed = processed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            processed = processed.replace(/\n/g, '<br>');
+            
+            div.innerHTML = processed;
+            return div.innerHTML;
+        }
+        
+        // Alternative approach 3: Step-by-step with validation
+        function validatedProcessing(content) {
+            console.log('🔧 ALTERNATIVE 3: Validated step-by-step');
+            
+            let result = content;
+            
+            // Step 1: Links first
+            const linkMatches = result.match(/\[([^\]]+)\]\(([^)]+)\)/g);
+            console.log('Found link matches:', linkMatches);
+            
+            if (linkMatches) {
+                linkMatches.forEach((match, index) => {
+                    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/;
+                    const parts = match.match(linkRegex);
+                    if (parts) {
+                        const text = parts[1];
+                        const url = parts[2];
+                        const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+                        result = result.replace(match, linkHtml);
+                        console.log(`Replaced link ${index}: ${match} -> ${linkHtml}`);
+                    }
+                });
+            }
+            
+            // Step 2: Bold text
+            result = result.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Step 3: Line breaks
+            result = result.replace(/\n/g, '<br>');
+            
+            return result;
+        }
+        
+        function runDeepDebug() {
+            console.log('\n=== DEEP DEBUG ANALYSIS ===');
+            
+            const result = formatMessageContent(actualContent);
+            
+            // Check if result contains links
+            const hasAnchorTags = result.includes('<a ');
+            const hasHref = result.includes('href=');
+            const hasTargetBlank = result.includes('target="_blank"');
+            const hasLinkClass = result.includes('class="chat-link"');
+            
+            // Check for placeholders that weren't replaced
+            const hasUnreplacedPlaceholders = result.includes('__LINK_PLACEHOLDER_');
+            
+            document.getElementById('debug-results').innerHTML = `
+                <div class="result">
+                    <h4>🔍 Deep Debug Results</h4>
+                    
+                    <p><strong>Input Content:</strong></p>
+                    <div class="code-block">${actualContent}</div>
+                    
+                    <p><strong>Processed Output:</strong></p>
+                    <div class="code-block">${result}</div>
+                    
+                    <p><strong>HTML Structure Analysis:</strong></p>
+                    <ul>
+                        <li class="${hasAnchorTags ? 'success' : 'error'}">
+                            ${hasAnchorTags ? '✅' : '❌'} Contains &lt;a&gt; tags: ${hasAnchorTags}
+                        </li>
+                        <li class="${hasHref ? 'success' : 'error'}">
+                            ${hasHref ? '✅' : '❌'} Contains href attributes: ${hasHref}
+                        </li>
+                        <li class="${hasTargetBlank ? 'success' : 'error'}">
+                            ${hasTargetBlank ? '✅' : '❌'} Has target="_blank": ${hasTargetBlank}
+                        </li>
+                        <li class="${hasLinkClass ? 'success' : 'error'}">
+                            ${hasLinkClass ? '✅' : '❌'} Has chat-link class: ${hasLinkClass}
+                        </li>
+                        <li class="${!hasUnreplacedPlaceholders ? 'success' : 'error'}">
+                            ${!hasUnreplacedPlaceholders ? '✅' : '❌'} No unreplaced placeholders: ${!hasUnreplacedPlaceholders}
+                        </li>
+                    </ul>
+                    
+                    <p><strong>Visual Test:</strong></p>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white;">
+                        ${result}
+                    </div>
+                    
+                    <p><strong>Raw HTML (for inspection):</strong></p>
+                    <textarea style="width: 100%; height: 100px; font-family: monospace; font-size: 12px;">${result}</textarea>
+                </div>
+            `;
+        }
+        
+        function testAlternatives() {
+            console.log('\n=== TESTING ALTERNATIVES ===');
+            
+            const simple = simpleMarkdownToHtml(actualContent);
+            const domBased = domBasedProcessing(actualContent);
+            const validated = validatedProcessing(actualContent);
+            
+            document.getElementById('alternatives-results').innerHTML = `
+                <div class="result">
+                    <h4>🔬 Alternative Approaches Results</h4>
+                    
+                    <h5>🔧 Simple Regex Replacement:</h5>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                        ${simple}
+                    </div>
+                    <div class="code-block">${simple}</div>
+                    
+                    <h5>🔧 DOM-Based Processing:</h5>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                        ${domBased}
+                    </div>
+                    <div class="code-block">${domBased}</div>
+                    
+                    <h5>🔧 Validated Step-by-Step:</h5>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                        ${validated}
+                    </div>
+                    <div class="code-block">${validated}</div>
+                    
+                    <p><strong>Analysis:</strong></p>
+                    <ul>
+                        <li class="${simple.includes('<a ') ? 'success' : 'error'}">
+                            Simple: ${simple.includes('<a ') ? 'Links working' : 'Links failed'}
+                        </li>
+                        <li class="${domBased.includes('<a ') ? 'success' : 'error'}">
+                            DOM-based: ${domBased.includes('<a ') ? 'Links working' : 'Links failed'}
+                        </li>
+                        <li class="${validated.includes('<a ') ? 'success' : 'error'}">
+                            Validated: ${validated.includes('<a ') ? 'Links working' : 'Links failed'}
+                        </li>
+                    </ul>
+                </div>
+            `;
+        }
+        
+        async function testLiveIntegration() {
+            const resultDiv = document.getElementById('live-results');
+            resultDiv.innerHTML = '<div style="color: blue;">🔄 Testing live integration...</div>';
+            
+            try {
+                // Test with current server
+                const sessionResponse = await fetch('/api/chat/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                if (!sessionResponse.ok) {
+                    throw new Error(`Session creation failed: ${sessionResponse.status}`);
+                }
+                
+                const sessionData = await sessionResponse.json();
+                console.log('Session created:', sessionData.sessionId);
+                
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'What is the parking rate for 30 minutes?',
+                        sessionId: sessionData.sessionId
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API call failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('API Response:', data.response);
+                
+                // Test all processing methods on live data
+                const currentResult = formatMessageContent(data.response);
+                const simpleResult = simpleMarkdownToHtml(data.response);
+                const validatedResult = validatedProcessing(data.response);
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <h4>🚀 Live Integration Test Results</h4>
+                        
+                        <p><strong>Raw API Response:</strong></p>
+                        <div class="code-block">${data.response}</div>
+                        
+                        <p><strong>Current Widget Processing:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                            ${currentResult}
+                        </div>
+                        
+                        <p><strong>Simple Alternative:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                            ${simpleResult}
+                        </div>
+                        
+                        <p><strong>Validated Alternative:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                            ${validatedResult}
+                        </div>
+                        
+                        <p><strong>Clickability Test:</strong></p>
+                        <ul>
+                            <li>Try clicking the links above to see which ones work</li>
+                            <li>Check console for any JavaScript errors</li>
+                            <li>Inspect HTML elements to see the actual structure</li>
+                        </ul>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Live test error:', error);
+                resultDiv.innerHTML = `
+                    <div style="color: red; margin: 10px 0;">
+                        ❌ Error: ${error.message}
+                        <br><small>Make sure the server is running on port 3001</small>
+                    </div>
+                `;
+            }
+        }
+        
+        console.log('🚀 Deep debug analysis ready. Click the buttons to investigate the link issue.');
+    </script>
+</body>
+</html> 

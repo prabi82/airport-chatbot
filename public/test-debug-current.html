@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Current Issue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .chat-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .chat-link:hover {
+            color: #1d4ed8;
+            border-bottom-color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin: -2px -4px;
+        }
+        
+        .test-box {
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .result {
+            border: 2px solid #2563eb;
+            padding: 20px;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .source-link-container {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            font-size: 13px;
+        }
+        
+        .bullet-point {
+            margin: 2px 0;
+            padding-left: 8px;
+            line-height: 1.4;
+        }
+        
+        .section-header {
+            font-weight: 600;
+            color: #1e40af;
+            margin: 8px 0 4px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Debug Current Issue</h1>
+    
+    <div class="test-box">
+        <h3>Raw Input (from your screenshot):</h3>
+        <pre id="raw-input" style="background: #f0f0f0; padding: 10px;"></pre>
+    </div>
+    
+    <div class="test-box">
+        <h3>Current formatMessageContent Result:</h3>
+        <div class="result" id="current-result"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>Step-by-Step Debug:</h3>
+        <div id="debug-steps" style="font-family: monospace; font-size: 12px; background: #f0f0f0; padding: 15px; white-space: pre-wrap;"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>🔧 Fixed Version Test:</h3>
+        <div class="result" id="fixed-result"></div>
+    </div>
+    
+    <div class="test-box">
+        <h3>🚀 Live API Test:</h3>
+        <button onclick="testLiveAPI()" style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">Test Live API</button>
+        <div id="live-result"></div>
+    </div>
+
+    <script>
+        // The exact content from your screenshot
+        const rawInput = `Based on current information from Muscat Airport: Based on the parking rates at Muscat Airport: **Quick Reference:** - **30 minutes**: OMR 0.600 - **1 hour**: OMR 1.100 - **2 hours**: OMR 2.100 - **3 hours**: OMR 3.200 Choose the time bracket that matches your parking duration. 🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+        
+        document.getElementById('raw-input').textContent = rawInput;
+        
+        let debugOutput = '';
+        
+        // Current formatMessageContent function (exact copy)
+        function formatMessageContent(content) {
+            debugOutput += `=== DEBUGGING CURRENT FUNCTION ===\n`;
+            debugOutput += `Input: ${content}\n\n`;
+            
+            // Step 1: Extract and protect markdown links first
+            const linkPlaceholders = [];
+            let linkCounter = 0;
+            
+            // Find all markdown links and replace them with placeholders
+            let processed = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                const placeholder = `__LINK_PLACEHOLDER_${linkCounter}__`;
+                linkPlaceholders[linkCounter] = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+                linkCounter++;
+                debugOutput += `Found link: "${text}" -> "${url}"\n`;
+                return placeholder;
+            });
+            
+            debugOutput += `After link extraction: ${processed}\n`;
+            debugOutput += `Link placeholders: ${JSON.stringify(linkPlaceholders)}\n\n`;
+            
+            // Step 2: Escape HTML content (but not our placeholders)
+            const div = document.createElement('div');
+            div.textContent = processed;
+            let escaped = div.innerHTML;
+            
+            debugOutput += `After HTML escaping: ${escaped}\n\n`;
+            
+            // Step 3: Convert line breaks to <br> tags
+            escaped = escaped.replace(/\n/g, '<br>');
+            debugOutput += `After line breaks: ${escaped}\n\n`;
+            
+            // Step 4: Convert **text** to bold
+            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            debugOutput += `After bold processing: ${escaped}\n\n`;
+            
+            // Step 5: Convert bullet points (•) to proper list items
+            escaped = escaped.replace(/^• (.+)$/gm, '<div class="bullet-point">• $1</div>');
+            
+            // Step 6: Convert markdown-style headers (## text) to styled headers
+            escaped = escaped.replace(/^## (.+)$/gm, '<div class="message-header">$1</div>');
+            
+            // Step 7: Convert sections with **Section:** pattern
+            escaped = escaped.replace(/\*\*([^:]+):\*\*/g, '<div class="section-header">$1:</div>');
+            
+            // Step 8: Convert 🔗 emoji followed by **More Information:** pattern for better styling
+            escaped = escaped.replace(/🔗\s*<strong>([^<]+)<\/strong>/g, '<div class="source-link-container">🔗 <strong>$1</strong></div>');
+            
+            // Step 9: Restore links by replacing placeholders
+            linkPlaceholders.forEach((linkHtml, index) => {
+                const placeholder = `__LINK_PLACEHOLDER_${index}__`;
+                escaped = escaped.replace(placeholder, linkHtml);
+                debugOutput += `Restored link ${index}: ${placeholder} -> ${linkHtml}\n`;
+            });
+            
+            debugOutput += `\nFinal result: ${escaped}\n`;
+            document.getElementById('debug-steps').textContent = debugOutput;
+            
+            return escaped;
+        }
+        
+        // Fixed version with better processing
+        function formatMessageContentFixed(content) {
+            // Step 1: Add proper line breaks first
+            let processed = content;
+            
+            // Add line breaks before bullet points and sections
+            processed = processed.replace(/(\w)\s*-\s*\*\*/g, '$1\n- **');
+            processed = processed.replace(/(\d+\.\d+)\s*-\s*/g, '$1\n- ');
+            processed = processed.replace(/duration\.\s*🔗/g, 'duration.\n\n🔗');
+            
+            // Step 2: Extract and protect markdown links
+            const linkPlaceholders = [];
+            let linkCounter = 0;
+            
+            processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                const placeholder = `__LINK_PLACEHOLDER_${linkCounter}__`;
+                linkPlaceholders[linkCounter] = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+                linkCounter++;
+                return placeholder;
+            });
+            
+            // Step 3: Escape HTML content
+            const div = document.createElement('div');
+            div.textContent = processed;
+            let escaped = div.innerHTML;
+            
+            // Step 4: Convert line breaks to <br> tags
+            escaped = escaped.replace(/\n/g, '<br>');
+            
+            // Step 5: Convert **text** to bold
+            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Step 6: Convert bullet points
+            escaped = escaped.replace(/<br>\s*-\s*/g, '<br><div class="bullet-point">• ');
+            escaped = escaped.replace(/(<div class="bullet-point">• [^<]+)/g, '$1</div>');
+            
+            // Step 7: Convert 🔗 pattern
+            escaped = escaped.replace(/🔗\s*<strong>([^<]+)<\/strong>/g, '<div class="source-link-container">🔗 <strong>$1</strong></div>');
+            
+            // Step 8: Restore links
+            linkPlaceholders.forEach((linkHtml, index) => {
+                const placeholder = `__LINK_PLACEHOLDER_${index}__`;
+                escaped = escaped.replace(placeholder, linkHtml);
+            });
+            
+            return escaped;
+        }
+        
+        // Test current function
+        const currentResult = formatMessageContent(rawInput);
+        document.getElementById('current-result').innerHTML = currentResult;
+        
+        // Test fixed function
+        const fixedResult = formatMessageContentFixed(rawInput);
+        document.getElementById('fixed-result').innerHTML = fixedResult;
+        
+        // Live API test
+        async function testLiveAPI() {
+            const resultDiv = document.getElementById('live-result');
+            resultDiv.innerHTML = '<div style="color: blue; margin: 10px 0;">🔄 Testing with live API...</div>';
+            
+            try {
+                // Create session
+                const sessionResponse = await fetch('/api/chat/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const sessionData = await sessionResponse.json();
+                
+                // Send parking query
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'What is the parking rate for 30 minutes?',
+                        sessionId: sessionData.sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                const currentProcessed = formatMessageContent(data.response);
+                const fixedProcessed = formatMessageContentFixed(data.response);
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <h4>✅ Live API Test Result:</h4>
+                        <p><strong>Raw Response:</strong></p>
+                        <div style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-size: 12px; white-space: pre-wrap;">${data.response}</div>
+                        
+                        <p><strong>Current Processing:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; background: white;">
+                            ${currentProcessed}
+                        </div>
+                        
+                        <p><strong>Fixed Processing:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; background: white;">
+                            ${fixedProcessed}
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: red; margin: 10px 0;">❌ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html> 

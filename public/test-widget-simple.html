@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Link Test - Oman Airports</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .instructions {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+        .test-queries {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .query-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .query-button:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛫 Oman Airports Assistant - Link Test</h1>
+        <p>Testing the simplified link formatting function</p>
+    </div>
+
+    <div class="instructions">
+        <h3>📋 Test Instructions:</h3>
+        <ol>
+            <li>Click the chat button in the bottom right corner</li>
+            <li>Use one of the test queries below</li>
+            <li>Check if the response contains <strong>clickable links</strong></li>
+            <li>Verify that <strong>bold text</strong> and <strong>formatting</strong> work properly</li>
+        </ol>
+    </div>
+
+    <div class="test-queries">
+        <h3>🧪 Test Queries:</h3>
+        <button class="query-button" onclick="sendTestQuery('whats the parking rate at muscat airport for 30 minutes?')">
+            Parking Rate Query
+        </button>
+        <button class="query-button" onclick="sendTestQuery('is dollar car rental service available at muscat airport?')">
+            Car Rental Query
+        </button>
+        <button class="query-button" onclick="sendTestQuery('how to get to muscat airport?')">
+            Transportation Query
+        </button>
+    </div>
+
+    <!-- Chat Widget Configuration -->
+    <script>
+        window.omanairportsChatConfig = {
+            apiUrl: 'http://localhost:3002/api',
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right',
+            autoOpen: false,
+            welcomeMessage: 'Welcome to Oman Airports! How can I help you today?'
+        };
+
+        function sendTestQuery(query) {
+            // Open the chat widget if it's not open
+            if (window.chatWidget && !window.chatWidget.isOpen) {
+                window.chatWidget.toggleChat();
+            }
+            
+            // Wait a bit for the widget to open, then set the input
+            setTimeout(() => {
+                const input = document.getElementById('chat-widget-input');
+                if (input) {
+                    input.value = query;
+                    input.focus();
+                    
+                    // Optionally auto-send the message
+                    setTimeout(() => {
+                        const sendButton = input.nextElementSibling;
+                        if (sendButton) {
+                            sendButton.click();
+                        }
+                    }, 500);
+                }
+            }, 300);
+        }
+    </script>
+
+    <!-- Load the Chat Widget -->
+    <script src="widget/chat-widget.js"></script>
+    <script>
+        // Store widget instance globally for testing
+        window.chatWidget = new OmanAirportsChatWidget(window.omanairportsChatConfig);
+    </script>
+</body>
+</html> 

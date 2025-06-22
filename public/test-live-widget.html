@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Widget Test - Oman Airports</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        .test-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .test-btn:hover {
+            background: #218838;
+        }
+        .debug-info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            margin-top: 20px;
+        }
+        .debug-log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛫 Live Widget Test</h1>
+        <p>Testing direct message injection to bypass API issues</p>
+    </div>
+
+    <div class="test-buttons">
+        <button class="test-btn" onclick="testFormattedMessage()">Test Formatted Message</button>
+        <button class="test-btn" onclick="testSimpleLink()">Test Simple Link</button>
+        <button class="test-btn" onclick="testBoldText()">Test Bold Text</button>
+        <button class="test-btn" onclick="testComplexMessage()">Test Complex Message</button>
+        <button class="test-btn" onclick="clearMessages()">Clear Messages</button>
+    </div>
+
+    <div class="debug-info">
+        <h3>🔍 Debug Information</h3>
+        <div id="debug-output" class="debug-log"></div>
+    </div>
+
+    <!-- Chat Widget Configuration -->
+    <script>
+        window.omanairportsChatConfig = {
+            apiUrl: 'http://localhost:3002/api',
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right',
+            autoOpen: true,
+            welcomeMessage: 'Widget ready for testing!'
+        };
+
+        let widget = null;
+        let debugOutput = null;
+
+        function log(message) {
+            if (!debugOutput) {
+                debugOutput = document.getElementById('debug-output');
+            }
+            const timestamp = new Date().toLocaleTimeString();
+            debugOutput.innerHTML += `[${timestamp}] ${message}\n`;
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+            console.log(message);
+        }
+
+        function testFormattedMessage() {
+            if (!widget) {
+                log('❌ Widget not initialized');
+                return;
+            }
+
+            const testMessage = `Based on current information from Muscat Airport: The parking rate for 30 minutes at Muscat Airport is **OMR 0.600**. This applies to both P1 (Short Term) and P2 (Short Term & Premium) parking areas.
+
+🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+
+            log('🧪 Testing formatted message...');
+            widget.addMessage('bot', testMessage);
+            log('✅ Formatted message added');
+        }
+
+        function testSimpleLink() {
+            if (!widget) {
+                log('❌ Widget not initialized');
+                return;
+            }
+
+            const testMessage = `Check out [Google](https://google.com) for more information.`;
+            log('🧪 Testing simple link...');
+            widget.addMessage('bot', testMessage);
+            log('✅ Simple link added');
+        }
+
+        function testBoldText() {
+            if (!widget) {
+                log('❌ Widget not initialized');
+                return;
+            }
+
+            const testMessage = `This is **bold text** and this is normal text.`;
+            log('🧪 Testing bold text...');
+            widget.addMessage('bot', testMessage);
+            log('✅ Bold text added');
+        }
+
+        function testComplexMessage() {
+            if (!widget) {
+                log('❌ Widget not initialized');
+                return;
+            }
+
+            const testMessage = `**Car Rental at Muscat Airport:**
+
+✅ **Yes, car rental is available** at Muscat Airport.
+📍 **Location:** Ground floor of the terminal building
+🚗 **Services:** Multiple international and local car rental companies
+⏰ **Operating Hours:** Available during airport operating hours
+
+🔗 **More Details:** [Transportation Services](https://www.muscatairport.co.om/en/content/to-from)`;
+
+            log('🧪 Testing complex message...');
+            widget.addMessage('bot', testMessage);
+            log('✅ Complex message added');
+        }
+
+        function clearMessages() {
+            const messagesContainer = document.getElementById('chat-widget-messages');
+            if (messagesContainer) {
+                // Keep only the welcome message
+                const welcomeMessage = messagesContainer.firstElementChild;
+                messagesContainer.innerHTML = '';
+                if (welcomeMessage) {
+                    messagesContainer.appendChild(welcomeMessage);
+                }
+                log('🧹 Messages cleared');
+            }
+        }
+
+        // Override console.log to capture widget logs
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('🔍')) {
+                log(`WIDGET: ${args.join(' ')}`);
+            }
+        };
+    </script>
+
+    <!-- Load the Chat Widget -->
+    <script src="widget/chat-widget.js"></script>
+    <script>
+        // Initialize widget and store reference
+        setTimeout(() => {
+            widget = new OmanAirportsChatWidget(window.omanairportsChatConfig);
+            window.testWidget = widget; // Make globally accessible
+            log('✅ Widget initialized successfully');
+            log('🎯 Ready for testing - click the test buttons above');
+        }, 1000);
+    </script>
+</body>
+</html> 

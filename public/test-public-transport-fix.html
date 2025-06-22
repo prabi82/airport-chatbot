@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Transportation Query Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .query {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #2196f3;
+        }
+        .response {
+            background: #f1f8e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #4caf50;
+            white-space: pre-wrap;
+        }
+        .score {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .score.high { background-color: #4caf50; }
+        .score.medium { background-color: #ff9800; }
+        .score.low { background-color: #f44336; }
+        .test-button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #1976d2;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .expected {
+            background: #fff3e0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            border-left: 4px solid #ff9800;
+        }
+        .server-info {
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border-left: 4px solid #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Public Transportation Query Fix Test</h1>
+    <p>This test verifies that public transportation queries are now being classified correctly as <strong>shuttle_bus</strong> instead of <strong>directions</strong>.</p>
+    
+    <div class="test-container">
+        <button class="test-button" onclick="runAllTests()">🚀 Run All Tests</button>
+        <button class="test-button" onclick="clearResults()">🗑️ Clear Results</button>
+        <div id="server-status" class="server-info" style="display: none;"></div>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        let sessionId = null;
+        let API_BASE = null;
+
+        const testCases = [
+            {
+                query: "Is public transportation available from Muscat Airport?",
+                expectedType: "shuttle_bus",
+                expectedKeywords: ["public transportation", "bus", "shuttle", "Mwasalat", "available"]
+            },
+            {
+                query: "Are there shuttle buses from hotels to the airport?",
+                expectedType: "shuttle_bus", 
+                expectedKeywords: ["shuttle", "hotel", "bus", "available"]
+            },
+            {
+                query: "Which company operates public buses from the airport?",
+                expectedType: "shuttle_bus",
+                expectedKeywords: ["Mwasalat", "company", "public bus", "operates"]
+            },
+            {
+                query: "Do hotels provide free shuttle services to the airport?",
+                expectedType: "shuttle_bus",
+                expectedKeywords: ["hotel", "shuttle", "free", "services"]
+            },
+            {
+                query: "How do I get to Muscat Airport from the city center?",
+                expectedType: "directions",
+                expectedKeywords: ["Sultan Qaboos Highway", "directions", "route", "highway"]
+            },
+            {
+                query: "What's the best route to Muscat International Airport from Seeb?",
+                expectedType: "directions", 
+                expectedKeywords: ["route", "highway", "directions", "Sultan Qaboos"]
+            }
+        ];
+
+        async function findWorkingServer() {
+            const ports = [3001, 3002, 3003, 3004, 3000];
+            
+            for (const port of ports) {
+                try {
+                    const response = await fetch(`http://localhost:${port}/api/chat/session`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    });
+                    
+                    if (response.ok) {
+                        API_BASE = `http://localhost:${port}`;
+                        const data = await response.json();
+                        sessionId = data.sessionId;
+                        
+                        document.getElementById('server-status').style.display = 'block';
+                        document.getElementById('server-status').innerHTML = `✅ Connected to server on port ${port}`;
+                        
+                        return true;
+                    }
+                } catch (error) {
+                    continue;
+                }
+            }
+            
+            document.getElementById('server-status').style.display = 'block';
+            document.getElementById('server-status').innerHTML = '❌ No server found on ports 3000-3004. Please start the server with: npm run dev';
+            document.getElementById('server-status').style.backgroundColor = '#ffebee';
+            document.getElementById('server-status').style.borderColor = '#f44336';
+            
+            return false;
+        }
+
+        async function testQuery(query, expectedType, expectedKeywords) {
+            try {
+                const response = await fetch(`${API_BASE}/api/chat/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: sessionId
+                    })
+                });
+
+                const data = await response.json();
+                const responseText = data.response;
+                
+                // Determine detected type based on response content
+                let detectedType = 'unknown';
+                if (responseText.includes('Hotel Shuttle') || 
+                    responseText.includes('Public Transportation') ||
+                    responseText.includes('Bus Services') ||
+                    responseText.includes('Mwasalat') ||
+                    (responseText.includes('shuttle') && !responseText.includes('Sultan Qaboos'))) {
+                    detectedType = 'shuttle_bus';
+                } else if (responseText.includes('Directions') || 
+                           responseText.includes('Sultan Qaboos Highway') ||
+                           responseText.includes('Route Overview') ||
+                           responseText.includes('Highway Route')) {
+                    detectedType = 'directions';
+                }
+
+                // Calculate score based on keyword matches and type correctness
+                let score = 0;
+                let keywordMatches = 0;
+                
+                for (const keyword of expectedKeywords) {
+                    if (responseText.toLowerCase().includes(keyword.toLowerCase())) {
+                        keywordMatches++;
+                    }
+                }
+                
+                score = (keywordMatches / expectedKeywords.length) * 100;
+                
+                // Bonus points for correct type detection
+                if (detectedType === expectedType) {
+                    score = Math.min(100, score + 30);
+                } else {
+                    score = Math.max(0, score - 30);
+                }
+
+                return {
+                    query,
+                    expectedType,
+                    detectedType,
+                    response: responseText,
+                    score: Math.round(score),
+                    keywordMatches,
+                    totalKeywords: expectedKeywords.length,
+                    success: detectedType === expectedType && score >= 70
+                };
+
+            } catch (error) {
+                return {
+                    query,
+                    expectedType,
+                    detectedType: 'error',
+                    response: `Error: ${error.message}`,
+                    score: 0,
+                    success: false
+                };
+            }
+        }
+
+        function getScoreClass(score) {
+            if (score >= 80) return 'high';
+            if (score >= 60) return 'medium';
+            return 'low';
+        }
+
+        function displayResult(result, index) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-container';
+            
+            const statusIcon = result.success ? '✅' : '❌';
+            const typeMatch = result.detectedType === result.expectedType ? '✅' : '❌';
+            
+            resultDiv.innerHTML = `
+                <h3>${statusIcon} Test ${index + 1} ${result.success ? 'PASSED' : 'FAILED'}</h3>
+                
+                <div class="query">
+                    <strong>Query:</strong> "${result.query}"
+                </div>
+                
+                <div class="expected">
+                    <strong>Expected Type:</strong> ${result.expectedType}<br>
+                    <strong>Detected Type:</strong> ${result.detectedType} ${typeMatch}
+                    <span class="score ${getScoreClass(result.score)}">${result.score}/100</span>
+                </div>
+                
+                <div class="response">
+                    <strong>Response:</strong>
+                    ${result.response.substring(0, 500)}${result.response.length > 500 ? '...' : ''}
+                </div>
+            `;
+            
+            document.getElementById('results').appendChild(resultDiv);
+        }
+
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '<div class="loading">🔄 Finding server and running tests...</div>';
+            
+            // Find working server first
+            const serverFound = await findWorkingServer();
+            if (!serverFound) {
+                document.getElementById('results').innerHTML = '<div class="test-container" style="background: #ffebee;"><h3>❌ Server Not Found</h3><p>Please start the server with <code>npm run dev</code> and refresh this page.</p></div>';
+                return;
+            }
+            
+            document.getElementById('results').innerHTML = '<div class="loading">🔄 Running tests...</div>';
+            
+            let passedTests = 0;
+            const totalTests = testCases.length;
+            
+            for (let i = 0; i < testCases.length; i++) {
+                const testCase = testCases[i];
+                const result = await testQuery(testCase.query, testCase.expectedType, testCase.expectedKeywords);
+                
+                if (i === 0) {
+                    document.getElementById('results').innerHTML = '';
+                }
+                
+                displayResult(result, i);
+                
+                if (result.success) {
+                    passedTests++;
+                }
+                
+                // Add delay between tests
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Add summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'test-container';
+            summaryDiv.style.backgroundColor = passedTests === totalTests ? '#e8f5e8' : '#fff3e0';
+            summaryDiv.innerHTML = `
+                <h2>📊 Test Summary</h2>
+                <p><strong>Results:</strong> ${passedTests}/${totalTests} tests passed</p>
+                <p><strong>Success Rate:</strong> ${Math.round((passedTests/totalTests)*100)}%</p>
+                ${passedTests === totalTests ? 
+                    '<p style="color: green;">🎉 All tests passed! Query detection is working correctly.</p>' : 
+                    '<p style="color: orange;">⚠️ Some tests failed. Query detection needs adjustment.</p>'
+                }
+            `;
+            document.getElementById('results').appendChild(summaryDiv);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-run tests on page load
+        window.onload = function() {
+            setTimeout(runAllTests, 1000);
+        };
+    </script>
+</body>
+</html> 

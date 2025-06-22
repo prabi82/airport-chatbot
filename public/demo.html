@@ -279,9 +279,11 @@
     </div>
 
     <script>
-        // Configure the chatbot - dynamically detect the port
-        const currentPort = window.location.port || '3000';
-        const apiUrl = `http://localhost:${currentPort}/api`;
+        // Configure the chatbot - use production URL or localhost for development
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const apiUrl = isLocalhost 
+            ? `http://localhost:${window.location.port || '3000'}/api`
+            : `${window.location.origin}/api`;
         
         window.omanairportsChatConfig = {
             apiUrl: apiUrl,
@@ -361,7 +363,10 @@
                 // Show error message
                 const indicator = document.getElementById('chatIndicator');
                 if (indicator) {
-                    indicator.innerHTML = '⚠️ Check if server is running on port ' + currentPort;
+                    const errorMsg = isLocalhost 
+                        ? `⚠️ Check if server is running on port ${window.location.port || '3000'}`
+                        : '⚠️ API Connection Error - Please try again';
+                    indicator.innerHTML = errorMsg;
                     indicator.style.background = '#ef4444';
                 }
             });

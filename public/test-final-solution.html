@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Link Solution Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .chat-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .chat-link:hover {
+            color: #1d4ed8;
+            border-bottom-color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin: -2px -4px;
+        }
+        
+        .test-section {
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .result {
+            border: 2px solid #2563eb;
+            padding: 20px;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .source-link-container {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            font-size: 13px;
+        }
+        
+        .bullet-point {
+            margin: 2px 0;
+            padding-left: 8px;
+            line-height: 1.4;
+        }
+        
+        .section-header {
+            font-weight: 600;
+            color: #1e40af;
+            margin: 8px 0 4px 0;
+            font-size: 14px;
+        }
+        
+        .success { color: #10b981; font-weight: bold; }
+        .error { color: #ef4444; font-weight: bold; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        
+        .console-output {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #1d4ed8;
+        }
+        
+        .chat-message--links {
+            margin-top: 8px;
+            animation: linkSlideIn 0.4s ease-out;
+        }
+        
+        .chat-message--links .source-link-container {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #0ea5e9;
+            border-left: 4px solid #0ea5e9;
+        }
+        
+        .chat-message--links .chat-link {
+            display: inline-block;
+            margin: 4px 0;
+            padding: 8px 12px;
+            background: #ffffff;
+            border: 1px solid #0ea5e9;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .chat-message--links .chat-link:hover {
+            background: #0ea5e9;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+        
+        @keyframes linkSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Final Link Solution Test</h1>
+    <p>Testing both the enhanced processing and separate link message approaches</p>
+    
+    <div class="test-section">
+        <h3>🔧 Solution 1: Enhanced Processing (Bulletproof)</h3>
+        <p>Direct conversion of markdown links to HTML, avoiding placeholder corruption.</p>
+        <button onclick="testEnhancedProcessing()">Test Enhanced Processing</button>
+        <div id="enhanced-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📚 Solution 2: Separate Link Messages</h3>
+        <p>Clean main content + dedicated link messages for guaranteed clickability.</p>
+        <button onclick="testSeparateLinks()">Test Separate Links</button>
+        <div id="separate-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🚀 Live Widget Test</h3>
+        <p>Test with the actual chat widget using both approaches.</p>
+        <button onclick="testLiveWidget()">Test Live Widget</button>
+        <div id="live-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🎯 Clickability Test</h3>
+        <p>Click the links below to verify they work correctly:</p>
+        <div id="clickability-test"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📊 Console Output</h3>
+        <div class="console-output" id="console-output"></div>
+    </div>
+
+    <script>
+        // Capture all console output
+        let consoleOutput = '';
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            const message = args.join(' ');
+            consoleOutput += `[LOG] ${message}\n`;
+            updateConsoleOutput();
+            originalLog.apply(console, arguments);
+        };
+        
+        console.error = function(...args) {
+            const message = args.join(' ');
+            consoleOutput += `[ERROR] ${message}\n`;
+            updateConsoleOutput();
+            originalError.apply(console, arguments);
+        };
+        
+        function updateConsoleOutput() {
+            document.getElementById('console-output').textContent = consoleOutput;
+        }
+        
+        // Test content
+        const testContent = `Based on current information from Muscat Airport: Based on the parking rates at Muscat Airport: **Quick Reference:** - **30 minutes**: OMR 0.600 - **1 hour**: OMR 1.100 - **2 hours**: OMR 2.100 - **3 hours**: OMR 3.200 Choose the time bracket that matches your parking duration. 🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+        
+        // Enhanced processing function (bulletproof approach)
+        function formatMessageContentEnhanced(content) {
+            console.log('🔍 Enhanced Processing - Input:', content);
+            
+            // BULLETPROOF APPROACH: Process links FIRST, before any HTML escaping
+            let processed = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                console.log(`🔗 Converting link: "${text}" -> "${url}"`);
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+            });
+            
+            console.log('🔗 After direct link conversion:', processed);
+            
+            // Split content into parts: HTML links vs text content
+            const parts = processed.split(/(<a[^>]*>.*?<\/a>)/);
+            let escaped = '';
+            
+            for (let i = 0; i < parts.length; i++) {
+                if (parts[i].match(/^<a[^>]*>.*?<\/a>$/)) {
+                    // This is already an HTML link, don't escape it
+                    escaped += parts[i];
+                    console.log(`🔗 Preserved link: ${parts[i]}`);
+                } else {
+                    // This is text content, escape it safely
+                    const div = document.createElement('div');
+                    div.textContent = parts[i];
+                    escaped += div.innerHTML;
+                }
+            }
+            
+            console.log('🔒 After selective HTML escaping:', escaped);
+            
+            // Add proper line breaks for better structure
+            escaped = escaped.replace(/(\w)\s*-\s*\*\*/g, '$1<br>- **');
+            escaped = escaped.replace(/(\d+\.\d+)\s*-\s*/g, '$1<br>- ');
+            escaped = escaped.replace(/duration\.\s*🔗/g, 'duration.<br><br>🔗');
+            
+            // Convert line breaks to <br> tags
+            escaped = escaped.replace(/\n/g, '<br>');
+            
+            // Convert **text** to bold
+            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert bullet points
+            escaped = escaped.replace(/<br>\s*-\s*/g, '<br><div class="bullet-point">• ');
+            escaped = escaped.replace(/(<div class="bullet-point">• [^<]*(?:<strong>[^<]*<\/strong>[^<]*)*[^<]*?)(<br>|$)/g, '$1</div>$2');
+            
+            // Convert section headers
+            escaped = escaped.replace(/<strong>([^:]+):<\/strong>/g, '<div class="section-header">$1:</div>');
+            
+            // Convert 🔗 pattern
+            escaped = escaped.replace(/🔗\s*<strong>([^<]+)<\/strong>/g, '<div class="source-link-container">🔗 <strong>$1</strong></div>');
+            
+            const linkCount = (escaped.match(/<a[^>]*>/g) || []).length;
+            console.log(`✨ Enhanced Processing - Final result: ${linkCount} links preserved`);
+            
+            return escaped;
+        }
+        
+        // Separate links approach
+        function extractLinksAndCleanContent(content) {
+            const links = [];
+            const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+            let match;
+            
+            while ((match = linkPattern.exec(content)) !== null) {
+                links.push({
+                    text: match[1],
+                    url: match[2]
+                });
+            }
+            
+            // Remove markdown links from content
+            let cleanContent = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '');
+            cleanContent = cleanContent.replace(/🔗\s*\*\*([^*]+)\*\*\s*$/g, '');
+            
+            return { content: cleanContent.trim(), links };
+        }
+        
+        function createLinkMessage(links) {
+            const linksHtml = links.map(link => 
+                `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="chat-link">🔗 ${link.text}</a>`
+            ).join('<br>');
+            
+            return `
+                <div class="chat-message--links">
+                    <div class="source-link-container">
+                        <strong>📚 Useful Links:</strong><br>
+                        ${linksHtml}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Test functions
+        function testEnhancedProcessing() {
+            console.log('\n=== TESTING ENHANCED PROCESSING ===');
+            const result = formatMessageContentEnhanced(testContent);
+            
+            const hasLinks = result.includes('<a ');
+            const hasHref = result.includes('href=');
+            const hasTargetBlank = result.includes('target="_blank"');
+            const hasBold = result.includes('<strong>');
+            
+            document.getElementById('enhanced-result').innerHTML = `
+                <div class="result">
+                    <h4>🔧 Enhanced Processing Result</h4>
+                    
+                    <p><strong>Processed Output:</strong></p>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                        ${result}
+                    </div>
+                    
+                    <p><strong>Quality Checks:</strong></p>
+                    <ul>
+                        <li class="${hasLinks ? 'success' : 'error'}">
+                            ${hasLinks ? '✅' : '❌'} Contains &lt;a&gt; tags: ${hasLinks}
+                        </li>
+                        <li class="${hasHref ? 'success' : 'error'}">
+                            ${hasHref ? '✅' : '❌'} Has href attributes: ${hasHref}
+                        </li>
+                        <li class="${hasTargetBlank ? 'success' : 'error'}">
+                            ${hasTargetBlank ? '✅' : '❌'} Opens in new tab: ${hasTargetBlank}
+                        </li>
+                        <li class="${hasBold ? 'success' : 'error'}">
+                            ${hasBold ? '✅' : '❌'} Bold formatting preserved: ${hasBold}
+                        </li>
+                    </ul>
+                    
+                    <p><strong>Manual Test:</strong> Try clicking the link above to verify it works!</p>
+                </div>
+            `;
+        }
+        
+        function testSeparateLinks() {
+            console.log('\n=== TESTING SEPARATE LINKS ===');
+            const extracted = extractLinksAndCleanContent(testContent);
+            const processedContent = formatMessageContentEnhanced(extracted.content);
+            const linkMessage = createLinkMessage(extracted.links);
+            
+            document.getElementById('separate-result').innerHTML = `
+                <div class="result">
+                    <h4>📚 Separate Links Result</h4>
+                    
+                    <p><strong>Main Message (Clean):</strong></p>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                        ${processedContent}
+                    </div>
+                    
+                    <p><strong>Separate Link Message:</strong></p>
+                    <div style="margin: 10px 0;">
+                        ${linkMessage}
+                    </div>
+                    
+                    <p><strong>Advantages:</strong></p>
+                    <ul>
+                        <li class="success">✅ Clean main content without URL clutter</li>
+                        <li class="success">✅ Guaranteed clickable links in dedicated message</li>
+                        <li class="success">✅ Beautiful visual separation</li>
+                        <li class="success">✅ Enhanced user experience</li>
+                    </ul>
+                    
+                    <p><strong>Manual Test:</strong> Try clicking the link in the blue box above!</p>
+                </div>
+            `;
+        }
+        
+        async function testLiveWidget() {
+            const resultDiv = document.getElementById('live-result');
+            resultDiv.innerHTML = '<div style="color: blue;">🔄 Testing with live widget...</div>';
+            
+            try {
+                // Create session
+                const sessionResponse = await fetch('/api/chat/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                if (!sessionResponse.ok) {
+                    throw new Error(`Session creation failed: ${sessionResponse.status}`);
+                }
+                
+                const sessionData = await sessionResponse.json();
+                console.log('✅ Session created:', sessionData.sessionId);
+                
+                // Send parking query
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'What is the parking rate for 30 minutes?',
+                        sessionId: sessionData.sessionId
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API call failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ API Response received');
+                console.log('Raw response:', data.response);
+                console.log('Extracted links:', data.links);
+                
+                // Test both approaches on live data
+                const enhancedResult = formatMessageContentEnhanced(data.response);
+                const separateResult = extractLinksAndCleanContent(data.response);
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <h4>🚀 Live Widget Test Results</h4>
+                        
+                        <p><strong>API Response Analysis:</strong></p>
+                        <ul>
+                            <li class="success">✅ Response received: ${data.response.length} characters</li>
+                            <li class="${data.links && data.links.length > 0 ? 'success' : 'warning'}">
+                                ${data.links && data.links.length > 0 ? '✅' : '⚠️'} Links extracted: ${data.links ? data.links.length : 0}
+                            </li>
+                            <li class="success">✅ Response time: ${data.responseTime}ms</li>
+                        </ul>
+                        
+                        <p><strong>Enhanced Processing Result:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                            ${enhancedResult}
+                        </div>
+                        
+                        <p><strong>Widget Behavior:</strong></p>
+                        <ul>
+                            <li>Open the actual chat widget to see the live results</li>
+                            <li>Ask: "What is the parking rate for 30 minutes?"</li>
+                            <li>Check if links are clickable in the widget</li>
+                            <li>Look for separate link messages if enabled</li>
+                        </ul>
+                        
+                        <p><strong>Success Metrics:</strong></p>
+                        <ul>
+                            <li class="${enhancedResult.includes('<a ') ? 'success' : 'error'}">
+                                ${enhancedResult.includes('<a ') ? '✅' : '❌'} Links converted to HTML
+                            </li>
+                            <li class="${enhancedResult.includes('target="_blank"') ? 'success' : 'error'}">
+                                ${enhancedResult.includes('target="_blank"') ? '✅' : '❌'} Opens in new tab
+                            </li>
+                            <li class="${enhancedResult.includes('<strong>') ? 'success' : 'error'}">
+                                ${enhancedResult.includes('<strong>') ? '✅' : '❌'} Bold formatting preserved
+                            </li>
+                        </ul>
+                    </div>
+                `;
+                
+                // Add clickability test
+                updateClickabilityTest();
+                
+            } catch (error) {
+                console.error('Live test error:', error);
+                resultDiv.innerHTML = `
+                    <div style="color: red; margin: 10px 0;">
+                        ❌ Error: ${error.message}
+                        <br><small>Make sure the server is running on the correct port</small>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateClickabilityTest() {
+            const testLinks = [
+                { text: 'Muscat Airport Parking', url: 'https://www.muscatairport.co.om/en/content/to-from' },
+                { text: 'Oman Airports Official', url: 'https://omanairports.co.om' }
+            ];
+            
+            const linksHtml = testLinks.map(link => 
+                `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="chat-link" onclick="logLinkClick('${link.text}')">${link.text}</a>`
+            ).join(' | ');
+            
+            document.getElementById('clickability-test').innerHTML = `
+                <div class="result">
+                    <h4>🎯 Manual Clickability Test</h4>
+                    <p>Click these links to verify they work correctly:</p>
+                    <div style="padding: 20px; background: #f0f9ff; border-radius: 8px; text-align: center; font-size: 18px;">
+                        ${linksHtml}
+                    </div>
+                    <p style="margin-top: 15px; font-size: 14px; color: #666;">
+                        ✅ Links should open in new tabs<br>
+                        ✅ Should navigate to Muscat Airport website<br>
+                        ✅ Should have hover effects
+                    </p>
+                </div>
+            `;
+        }
+        
+        function logLinkClick(linkText) {
+            console.log(`🔗 Link clicked: ${linkText}`);
+        }
+        
+        // Initialize clickability test
+        updateClickabilityTest();
+        
+        console.log('🚀 Final solution test suite loaded. Use the buttons to test each approach.');
+    </script>
+</body>
+</html> 

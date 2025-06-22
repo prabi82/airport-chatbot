@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { AIProcessor } from '@/lib/ai-processor';
+import { prisma } from '@/lib/database';
 
 const messageSchema = z.object({
   message: z.string().min(1).max(1000),
   sessionId: z.string().optional(),
 });
 
-// Mock responses for demo
+// Initialize AI processor
+const aiProcessor = new AIProcessor();
+
+// Mock responses for demo (fallback only)
 const mockResponses = {
   flight: {
     pattern: /\b([A-Z]{2}\d{3,4})\b/,
@@ -205,21 +210,68 @@ export async function POST(request: NextRequest) {
 
     const startTime = Date.now();
 
-    // Generate or use provided session ID
-    const currentSessionId = sessionId || crypto.randomUUID();
+    // Get or create session
+    const session = await getOrCreateSession(sessionId, request);
 
-    // Process message and generate response
-    const response = await processMessage(message);
+    // Store user message
+    await storeMessage(session.sessionId, 'user', message);
 
-    // Calculate response time
-    const responseTime = Date.now() - startTime;
+    // Try enhanced AI processing first
+    try {
+      const processedResponse = await aiProcessor.processQuery(message, session.sessionId);
 
-    return NextResponse.json({
-      success: true,
-      response,
-      sessionId: currentSessionId,
-      responseTime
-    });
+      // Store bot response
+      await storeMessage(session.sessionId, 'bot', processedResponse.content, processedResponse.intent, processedResponse.responseTime);
+
+      // Calculate total response time
+      const responseTime = Date.now() - startTime;
+
+      // Extract links for alternative separate message approach
+      const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+      const links = [];
+      let match;
+      
+      while ((match = linkPattern.exec(processedResponse.content)) !== null) {
+        links.push({
+          text: match[1],
+          url: match[2]
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        response: processedResponse.content,
+        sessionId: session.sessionId,
+        responseTime,
+        confidence: processedResponse.confidence,
+        intent: processedResponse.intent,
+        sources: processedResponse.sources,
+        suggestedActions: processedResponse.suggestedActions,
+        requiresHuman: processedResponse.requiresHuman,
+        links: links // Include extracted links for alternative approach
+      });
+    } catch (aiError) {
+      console.warn('AI processing failed, falling back to mock responses:', aiError);
+      
+      // Fallback to mock responses
+      const response = await processMessageWithMockResponses(message, session.sessionId);
+      const responseTime = Date.now() - startTime;
+
+      // Store bot response
+      await storeMessage(session.sessionId, 'bot', response, 'mock_fallback', responseTime);
+
+      return NextResponse.json({
+        success: true,
+        response,
+        sessionId: session.sessionId,
+        responseTime,
+        confidence: 0.7,
+        intent: 'mock_fallback',
+        sources: [],
+        suggestedActions: [],
+        requiresHuman: false
+      });
+    }
 
   } catch (error) {
     console.error('Chat API error:', error);
@@ -230,55 +282,88 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function processMessage(message: string): Promise<string> {
+async function getOrCreateSession(sessionId: string | undefined, request: NextRequest) {
+  if (sessionId) {
+    const existing = await prisma.chatSession.findUnique({
+      where: { sessionId }
+    });
+    if (existing) return existing;
+  }
+
+  return await prisma.chatSession.create({
+    data: {
+      sessionId: crypto.randomUUID(),
+      userIp: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || '',
+      language: request.headers.get('accept-language')?.split(',')[0] || 'en',
+    }
+  });
+}
+
+async function processMessageWithMockResponses(message: string, sessionId: string): Promise<string> {
   const lowerMessage = message.toLowerCase();
 
-  // Check for flight number
-  const flightMatch = message.toUpperCase().match(mockResponses.flight.pattern);
+  // Check for flight numbers
+  const flightMatch = message.match(mockResponses.flight.pattern);
   if (flightMatch) {
     return mockResponses.flight.response(flightMatch[1]);
   }
 
-  // Check for greetings
-  if (mockResponses.greetings.patterns.some(pattern => pattern.test(message))) {
-    const responses = mockResponses.greetings.responses;
-    return responses[Math.floor(Math.random() * responses.length)];
+  // Check greetings
+  for (const pattern of mockResponses.greetings.patterns) {
+    if (pattern.test(lowerMessage)) {
+      const responses = mockResponses.greetings.responses;
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
   }
 
-  // Check for airport-related queries
-  if (mockResponses.airport.patterns.some(pattern => pattern.test(message))) {
-    return mockResponses.airport.responses[0];
+  // Check airport services
+  for (const pattern of mockResponses.airport.patterns) {
+    if (pattern.test(lowerMessage)) {
+      return mockResponses.airport.responses[0];
+    }
   }
 
-  // Check for parking queries
-  if (mockResponses.parking.patterns.some(pattern => pattern.test(message))) {
-    return mockResponses.parking.responses[0];
+  // Check parking
+  for (const pattern of mockResponses.parking.patterns) {
+    if (pattern.test(lowerMessage)) {
+      return mockResponses.parking.responses[0];
+    }
   }
 
-  // Check for transportation queries
-  if (mockResponses.transportation.patterns.some(pattern => pattern.test(message))) {
-    return mockResponses.transportation.responses[0];
+  // Check transportation
+  for (const pattern of mockResponses.transportation.patterns) {
+    if (pattern.test(lowerMessage)) {
+      return mockResponses.transportation.responses[0];
+    }
   }
 
-  // Check for security/check-in queries
-  if (mockResponses.security.patterns.some(pattern => pattern.test(message))) {
-    return mockResponses.security.responses[0];
+  // Check security
+  for (const pattern of mockResponses.security.patterns) {
+    if (pattern.test(lowerMessage)) {
+      return mockResponses.security.responses[0];
+    }
   }
 
-  // Default response for unmatched queries
-  return `🤖 **Thank you for your question!**
+  // Default response
+  return `Thank you for your question. I'm here to help with information about Oman Airports including:
 
-"${message}"
-
-**I can help you with:**
-• ✈️ Flight status (try "WY123" or "OV456")
+• ✈️ Flight information and status
 • 🏢 Airport facilities and services
-• 🅿️ Parking information and rates
-• 🚗 Transportation options
+• 🚗 Transportation and parking
 • 🛂 Security and check-in procedures
 
-**Need immediate assistance?**
-📞 Customer Service: +968 2451 4444 (24/7)
-
 Could you please rephrase your question or ask about one of these topics?`;
+}
+
+async function storeMessage(sessionId: string, type: string, content: string, intent?: string, responseTime?: number) {
+  await prisma.chatMessage.create({
+    data: {
+      sessionId,
+      messageType: type,
+      content,
+      intent,
+      responseTimeMs: responseTime,
+    }
+  });
 } 

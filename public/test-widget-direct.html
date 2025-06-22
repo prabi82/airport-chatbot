@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Direct Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #2563eb;
+        }
+        
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: background 0.3s ease;
+        }
+        
+        button:hover {
+            background: #1d4ed8;
+        }
+        
+        .console-output {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        
+        .widget-instructions {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #0ea5e9;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Widget Enhanced Processing Test</h1>
+        
+        <div class="test-section">
+            <h3>📋 Test Instructions</h3>
+            <p>This page tests the enhanced processing implementation in the actual chat widget.</p>
+            <ol>
+                <li>Open the chat widget (blue button in bottom-right)</li>
+                <li>Ask: <strong>"What is the parking rate for 30 minutes?"</strong></li>
+                <li>Check if links are clickable and formatted correctly</li>
+                <li>Monitor the console output below for processing logs</li>
+            </ol>
+        </div>
+        
+        <div class="widget-instructions">
+            <h3>🎯 What to Look For</h3>
+            <ul>
+                <li class="success">✅ Bold text formatting (e.g., **Quick Reference:** appears bold)</li>
+                <li class="success">✅ Clickable blue links that open in new tabs</li>
+                <li class="success">✅ Proper bullet points and structure</li>
+                <li class="success">✅ Console logs showing "🔗 Converting link:" messages</li>
+            </ul>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔧 Manual Testing</h3>
+            <button onclick="testWidgetDirectly()">🧪 Test Widget Processing</button>
+            <button onclick="clearConsole()">🧹 Clear Console</button>
+            <button onclick="checkWidgetStatus()">📊 Check Widget Status</button>
+            <div id="test-results"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Console Output</h3>
+            <div class="console-output" id="console-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Widget configuration
+        window.omanairportsChatConfig = {
+            apiUrl: window.location.origin + '/api',
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right',
+            autoOpen: false,
+            welcomeMessage: 'Welcome! Ask me about parking rates to test link functionality.'
+        };
+        
+        // Capture console output
+        let consoleOutput = '';
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            const message = args.join(' ');
+            consoleOutput += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+            updateConsoleOutput();
+            originalLog.apply(console, arguments);
+        };
+        
+        console.error = function(...args) {
+            const message = args.join(' ');
+            consoleOutput += `[${new Date().toLocaleTimeString()}] ERROR: ${message}\n`;
+            updateConsoleOutput();
+            originalError.apply(console, arguments);
+        };
+        
+        function updateConsoleOutput() {
+            document.getElementById('console-output').textContent = consoleOutput;
+            // Auto-scroll to bottom
+            const consoleDiv = document.getElementById('console-output');
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+        
+        function clearConsole() {
+            consoleOutput = '';
+            updateConsoleOutput();
+            console.log('🧹 Console cleared - ready for new tests');
+        }
+        
+        async function testWidgetDirectly() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<div class="status info">🔄 Testing widget processing...</div>';
+            
+            try {
+                // Test the formatMessageContent function directly if widget is loaded
+                if (window.OmanAirportsChatWidget) {
+                    console.log('🧪 Testing widget formatMessageContent function directly');
+                    
+                    // Create a temporary widget instance to test the function
+                    const tempWidget = new window.OmanAirportsChatWidget(window.omanairportsChatConfig);
+                    
+                    // Test content
+                    const testContent = `**Quick Reference:** - **30 minutes**: OMR 0.600 🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+                    
+                    console.log('🔍 Testing with content:', testContent);
+                    
+                    // Test the function
+                    const result = tempWidget.formatMessageContent(testContent);
+                    
+                    console.log('✨ Function result:', result);
+                    
+                    // Check results
+                    const hasLinks = result.includes('<a ');
+                    const hasHref = result.includes('href=');
+                    const hasTargetBlank = result.includes('target="_blank"');
+                    const hasBold = result.includes('<strong>');
+                    const hasLinkClass = result.includes('class="chat-link"');
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="status success">✅ Widget function test completed</div>
+                        <div style="margin: 15px 0;">
+                            <h4>📊 Test Results:</h4>
+                            <ul>
+                                <li class="${hasLinks ? 'success' : 'error'}">
+                                    ${hasLinks ? '✅' : '❌'} Contains &lt;a&gt; tags: ${hasLinks}
+                                </li>
+                                <li class="${hasHref ? 'success' : 'error'}">
+                                    ${hasHref ? '✅' : '❌'} Has href attributes: ${hasHref}
+                                </li>
+                                <li class="${hasTargetBlank ? 'success' : 'error'}">
+                                    ${hasTargetBlank ? '✅' : '❌'} Opens in new tab: ${hasTargetBlank}
+                                </li>
+                                <li class="${hasBold ? 'success' : 'error'}">
+                                    ${hasBold ? '✅' : '❌'} Bold formatting: ${hasBold}
+                                </li>
+                                <li class="${hasLinkClass ? 'success' : 'error'}">
+                                    ${hasLinkClass ? '✅' : '❌'} Proper CSS class: ${hasLinkClass}
+                                </li>
+                            </ul>
+                        </div>
+                        <div style="background: #f0f0f0; padding: 15px; border-radius: 6px; margin: 10px 0;">
+                            <strong>Processed Output:</strong><br>
+                            <div style="margin-top: 10px; padding: 10px; background: white; border: 1px solid #ddd; border-radius: 4px;">
+                                ${result}
+                            </div>
+                        </div>
+                        <div class="status ${hasLinks && hasBold ? 'success' : 'error'}">
+                            ${hasLinks && hasBold ? '🎉 Widget processing is working correctly!' : '⚠️ Widget processing needs attention'}
+                        </div>
+                    `;
+                    
+                } else {
+                    resultsDiv.innerHTML = '<div class="status error">❌ Widget not loaded yet. Please wait and try again.</div>';
+                }
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                resultsDiv.innerHTML = `<div class="status error">❌ Test failed: ${error.message}</div>`;
+            }
+        }
+        
+        function checkWidgetStatus() {
+            const resultsDiv = document.getElementById('test-results');
+            
+            const widgetLoaded = !!window.OmanAirportsChatWidget;
+            const widgetElement = document.getElementById('omanairports-chat-widget');
+            const buttonElement = document.getElementById('omanairports-chat-button');
+            
+            resultsDiv.innerHTML = `
+                <div class="status info">📊 Widget Status Check</div>
+                <ul>
+                    <li class="${widgetLoaded ? 'success' : 'error'}">
+                        ${widgetLoaded ? '✅' : '❌'} Widget class loaded: ${widgetLoaded}
+                    </li>
+                    <li class="${widgetElement ? 'success' : 'error'}">
+                        ${widgetElement ? '✅' : '❌'} Widget element exists: ${!!widgetElement}
+                    </li>
+                    <li class="${buttonElement ? 'success' : 'error'}">
+                        ${buttonElement ? '✅' : '❌'} Chat button exists: ${!!buttonElement}
+                    </li>
+                </ul>
+                <div style="margin-top: 15px;">
+                    <strong>Next Steps:</strong>
+                    <ol>
+                        <li>Click the blue chat button in the bottom-right corner</li>
+                        <li>Ask: "What is the parking rate for 30 minutes?"</li>
+                        <li>Check if the response has clickable links</li>
+                        <li>Monitor console output for processing logs</li>
+                    </ol>
+                </div>
+            `;
+        }
+        
+        // Initialize
+        console.log('🚀 Widget test page loaded');
+        console.log('🔧 Widget config:', window.omanairportsChatConfig);
+        
+        // Check widget status after a short delay
+        setTimeout(() => {
+            checkWidgetStatus();
+        }, 2000);
+    </script>
+    
+    <!-- Load the widget -->
+    <script src="/widget/chat-widget.js"></script>
+</body>
+</html> 

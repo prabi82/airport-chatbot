@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oman Airports Chatbot - Web Scraping Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #1e3a8a;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .header p {
+            color: #6b7280;
+            font-size: 1.1em;
+        }
+        
+        .status-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .status-active {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+        
+        .status-title {
+            font-weight: 600;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-icon {
+            font-size: 1.5em;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+        }
+        
+        .test-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .query-card {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .query-card:hover {
+            background: #e2e8f0;
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+        
+        .query-title {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 8px;
+        }
+        
+        .query-text {
+            color: #4b5563;
+            font-style: italic;
+        }
+        
+        .results-area {
+            background: #1f2937;
+            color: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        
+        .api-test-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+            transition: background 0.3s ease;
+        }
+        
+        .api-test-btn:hover {
+            background: #2563eb;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛫 Oman Airports Chatbot</h1>
+            <p>Web Scraping Integration Test - Phase 7</p>
+        </div>
+
+        <div class="status-card status-active">
+            <div class="status-title">
+                <span class="status-icon">✅</span>
+                Web Scraping System Active
+            </div>
+            <p>The chatbot is now configured to fetch real-time data from muscatairport.co.om and other official airport sources.</p>
+        </div>
+
+        <div class="status-card">
+            <div class="status-title">
+                <span class="status-icon">🔧</span>
+                System Status
+            </div>
+            <div id="system-status">
+                <button class="api-test-btn" onclick="checkScraperHealth()">Check Scraper Health</button>
+                <button class="api-test-btn" onclick="triggerScraping()">Trigger Scraping</button>
+                <button class="api-test-btn" onclick="checkCacheStats()">Cache Statistics</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Test Web Scraping with These Queries</h2>
+            <p>Click on any query below to test if the chatbot fetches real data from airport websites:</p>
+            
+            <div class="test-queries">
+                <div class="query-card" onclick="testQuery('What restaurants are available at Muscat Airport?')">
+                    <div class="query-title">🍽️ Dining Services</div>
+                    <div class="query-text">"What restaurants are available at Muscat Airport?"</div>
+                </div>
+                
+                <div class="query-card" onclick="testQuery('How do I get from the airport to the city?')">
+                    <div class="query-title">🚗 Transportation</div>
+                    <div class="query-text">"How do I get from the airport to the city?"</div>
+                </div>
+                
+                <div class="query-card" onclick="testQuery('What shopping options are there?')">
+                    <div class="query-title">🛍️ Shopping</div>
+                    <div class="query-text">"What shopping options are there?"</div>
+                </div>
+                
+                <div class="query-card" onclick="testQuery('Tell me about airport facilities')">
+                    <div class="query-title">🏢 Facilities</div>
+                    <div class="query-text">"Tell me about airport facilities"</div>
+                </div>
+                
+                <div class="query-card" onclick="testQuery('What are the parking rates?')">
+                    <div class="query-title">🅿️ Parking</div>
+                    <div class="query-text">"What are the parking rates?"</div>
+                </div>
+                
+                <div class="query-card" onclick="testQuery('Airport services and amenities')">
+                    <div class="query-title">⚡ Services</div>
+                    <div class="query-text">"Airport services and amenities"</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-area" id="results">
+            <div>🚀 Ready to test web scraping integration...</div>
+            <div>💡 Click "Check Scraper Health" to verify the system status</div>
+            <div>🧪 Then try any of the test queries above</div>
+        </div>
+    </div>
+
+    <script>
+        // Configure the chatbot
+        window.omanairportsChatConfig = {
+            apiUrl: 'http://localhost:3001/api',
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right'
+        };
+
+        let sessionId = null;
+
+        function addToResults(message, type = 'info') {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#60a5fa';
+            
+            results.innerHTML += `<div style="color: ${color}; margin: 5px 0;">[${timestamp}] ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+
+        async function makeApiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`http://localhost:3001/api${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function checkScraperHealth() {
+            addToResults('🔍 Checking scraper health...');
+            
+            const result = await makeApiCall('/admin/scraper?action=health');
+            
+            if (result.success) {
+                addToResults('✅ Scraper service is healthy!', 'success');
+                addToResults(`Sources: ${JSON.stringify(result.data.sources, null, 2)}`);
+            } else {
+                addToResults(`❌ Scraper health check failed: ${result.error || result.status}`, 'error');
+            }
+        }
+
+        async function triggerScraping() {
+            addToResults('🚀 Triggering web scraping...');
+            
+            const result = await makeApiCall('/admin/scraper', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'scrape_all' })
+            });
+            
+            if (result.success) {
+                addToResults('✅ Scraping completed successfully!', 'success');
+                addToResults(`Results: ${JSON.stringify(result.data, null, 2)}`);
+            } else {
+                addToResults(`❌ Scraping failed: ${result.error || result.status}`, 'error');
+            }
+        }
+
+        async function checkCacheStats() {
+            addToResults('📊 Checking cache statistics...');
+            
+            const result = await makeApiCall('/admin/scraper?action=cache_stats');
+            
+            if (result.success) {
+                addToResults('✅ Cache statistics retrieved!', 'success');
+                addToResults(`Stats: ${JSON.stringify(result.data, null, 2)}`);
+            } else {
+                addToResults(`❌ Cache stats failed: ${result.error || result.status}`, 'error');
+            }
+        }
+
+        async function createSession() {
+            if (sessionId) return sessionId;
+            
+            const result = await makeApiCall('/chat/session', {
+                method: 'POST',
+                body: JSON.stringify({ language: 'en' })
+            });
+            
+            if (result.success) {
+                sessionId = result.data.sessionId;
+                addToResults(`✅ Chat session created: ${sessionId}`, 'success');
+                return sessionId;
+            } else {
+                addToResults(`❌ Failed to create session: ${result.error}`, 'error');
+                return null;
+            }
+        }
+
+        async function testQuery(query) {
+            addToResults(`🧪 Testing query: "${query}"`);
+            
+            const session = await createSession();
+            if (!session) return;
+            
+            const result = await makeApiCall('/chat/send', {
+                method: 'POST',
+                body: JSON.stringify({
+                    message: query,
+                    sessionId: session
+                })
+            });
+            
+            if (result.success) {
+                addToResults('✅ Response received!', 'success');
+                addToResults(`🤖 Response: ${result.data.response}`);
+                
+                if (result.data.sources && result.data.sources.length > 0) {
+                    addToResults(`📄 Sources found: ${result.data.sources.length}`, 'success');
+                    result.data.sources.forEach(source => {
+                        addToResults(`   - ${source.title} (${source.url})`);
+                    });
+                } else {
+                    addToResults('⚠️ No web sources found - using fallback response');
+                }
+                
+                addToResults(`🎯 Confidence: ${result.data.confidence || 'N/A'}`);
+                addToResults(`⏱️ Response time: ${result.data.responseTime || 'N/A'}ms`);
+            } else {
+                addToResults(`❌ Query failed: ${result.error || result.status}`, 'error');
+            }
+            
+            addToResults('---');
+        }
+
+        // Initialize
+        addToResults('🌟 Web Scraping Test Page Loaded');
+        addToResults('💡 This page tests the enhanced AI processor with web scraping');
+        addToResults('🔗 The system should now fetch data from muscatairport.co.om');
+    </script>
+
+    <!-- Load the chatbot widget -->
+    <script src="/widget/chat-widget.js"></script>
+</body>
+</html> 

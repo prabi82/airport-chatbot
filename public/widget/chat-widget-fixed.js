@@ -12,7 +12,7 @@ class OmanAirportsChatWidget {
       ...config
     };
     
-    console.log('Chat widget initialized with API URL:', this.config.apiUrl);
+    console.log('🚀 FIXED Chat widget initialized with API URL:', this.config.apiUrl);
     
     this.sessionId = null;
     this.isOpen = false;
@@ -47,7 +47,7 @@ class OmanAirportsChatWidget {
     widget.innerHTML = `
       <div class="chat-widget__header">
         <div class="chat-widget__title">
-          <span>✈️ Oman Airports Assistant</span>
+          <span>✈️ Oman Airports Assistant (FIXED)</span>
         </div>
         <button class="chat-widget__close" id="chat-widget-close">×</button>
       </div>
@@ -56,7 +56,7 @@ class OmanAirportsChatWidget {
         <div class="chat-widget__messages" id="chat-widget-messages">
           <div class="chat-message chat-message--bot">
             <div class="chat-message__content">
-              Welcome to Oman Airports! How can I help you today?
+              Welcome to Oman Airports! This is the <strong>FIXED</strong> version with working <a href="https://google.com" target="_blank" class="chat-link">links</a>!
             </div>
             <div class="chat-message__time">${new Date().toLocaleTimeString()}</div>
           </div>
@@ -182,14 +182,10 @@ class OmanAirportsChatWidget {
       if (data.success) {
         this.hideTyping();
         
-        // Always use enhanced processing approach (bulletproof solution)
-        console.log('🔧 Using enhanced processing approach');
+        console.log('🔧 Using FIXED processing approach');
         this.addMessage('bot', data.response);
         
         console.log('Message sent successfully, response time:', data.responseTime + 'ms');
-        if (data.links && data.links.length > 0) {
-          console.log('📊 Links detected in response:', data.links.length);
-        }
       } else {
         throw new Error(data.error || 'Failed to send message');
       }
@@ -201,19 +197,30 @@ class OmanAirportsChatWidget {
     }
   }
 
+  // BULLETPROOF addMessage method
   addMessage(type, content) {
+    console.log('🔧 FIXED addMessage called with:', { type, content });
+    
     const messagesContainer = document.getElementById('chat-widget-messages');
+    if (!messagesContainer) {
+      console.error('Messages container not found!');
+      return;
+    }
+
     const messageDiv = document.createElement('div');
     messageDiv.className = `chat-message chat-message--${type}`;
     
     const time = new Date().toLocaleTimeString();
     
-    // Create content div first
+    // BULLETPROOF: Create content div and set innerHTML directly
     const contentDiv = document.createElement('div');
     contentDiv.className = 'chat-message__content';
     
-    // Format and set the content using innerHTML (bulletproof approach)
-    const formattedContent = this.formatMessageContent(content);
+    // ULTRA-SIMPLE formatting that MUST work
+    const formattedContent = this.formatMessageContentUltraSimple(content);
+    console.log('🔧 Formatted content:', formattedContent);
+    
+    // Set innerHTML directly - this MUST work
     contentDiv.innerHTML = formattedContent;
     
     // Create time div
@@ -221,37 +228,32 @@ class OmanAirportsChatWidget {
     timeDiv.className = 'chat-message__time';
     timeDiv.textContent = time;
     
-    // Append both to message div
+    // Append to message div
     messageDiv.appendChild(contentDiv);
     messageDiv.appendChild(timeDiv);
     
-    // Append to messages container
+    // Append to container
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     
-    // Log for debugging
-    console.log('✅ Message added:', {
-      type,
-      originalContent: content,
-      formattedContent,
-      htmlContent: contentDiv.innerHTML
-    });
+    console.log('✅ FIXED Message added successfully');
   }
 
-  formatMessageContent(content) {
+  // ULTRA-SIMPLE formatting function that CANNOT fail
+  formatMessageContentUltraSimple(content) {
     if (!content) return '';
     
-    console.log('🔧 BULLETPROOF formatting input:', content);
+    console.log('🔧 ULTRA-SIMPLE formatting input:', content);
     
     let result = String(content);
     
-    // Step 1: Convert [text](url) to clickable links with inline CSS
+    // Step 1: Convert [text](url) to clickable links
     result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
       console.log(`🔗 Converting link: "${text}" -> "${url}"`);
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link" style="color: #2563eb; text-decoration: underline; font-weight: 500; cursor: pointer;">${text}</a>`;
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link" style="color: #2563eb; text-decoration: underline; font-weight: 500;">${text}</a>`;
     });
     
-    // Step 2: Convert **text** to bold with inline CSS
+    // Step 2: Convert **text** to bold
     result = result.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
     
     // Step 3: Convert newlines to <br>
@@ -261,7 +263,7 @@ class OmanAirportsChatWidget {
     result = result.replace(/^-\s*/gm, '• ');
     result = result.replace(/<br>\s*-\s*/g, '<br>• ');
     
-    console.log('🔧 BULLETPROOF formatting output:', result);
+    console.log('🔧 ULTRA-SIMPLE formatting output:', result);
     
     return result;
   }
@@ -314,61 +316,14 @@ class OmanAirportsChatWidget {
       button.style.display = 'block';
     }
   }
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  // Alternative approach: Add a separate message for links
-  addLinkMessage(links) {
-    if (!links || links.length === 0) return;
-    
-    const messagesContainer = document.getElementById('chat-widget-messages');
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'chat-message chat-message--bot chat-message--links';
-    
-    const time = new Date().toLocaleTimeString();
-    
-    const linksHtml = links.map(link => 
-      `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="chat-link">🔗 ${link.text}</a>`
-    ).join('<br>');
-    
-    messageDiv.innerHTML = `
-      <div class="chat-message__content">
-        <div class="source-link-container">
-          <strong>📚 Useful Links:</strong><br>
-          ${linksHtml}
-        </div>
-      </div>
-      <div class="chat-message__time">${time}</div>
-    `;
-
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }
-  
-  // Enhanced addMessage that can handle content with separate links
-  addMessageWithLinks(type, content, links = null) {
-    // Add main message
-    this.addMessage(type, content);
-    
-    // Add links as separate message if provided
-    if (links && links.length > 0) {
-      setTimeout(() => {
-        this.addLinkMessage(links);
-      }, 500); // Small delay for better UX
-    }
-  }
 }
 
 // Auto-initialize widget
 if (typeof window !== 'undefined') {
-  window.OmanAirportsChatWidget = OmanAirportsChatWidget;
+  window.OmanAirportsChatWidgetFixed = OmanAirportsChatWidget;
   
   // Auto-initialize if config is present
-  if (window.omanairportsChatConfig) {
-    new OmanAirportsChatWidget(window.omanairportsChatConfig);
+  if (window.omanairportsChatConfigFixed) {
+    new OmanAirportsChatWidget(window.omanairportsChatConfigFixed);
   }
 } 

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Directions Query Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .query {
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .response {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .loading { background: #fff3cd; color: #856404; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .score {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗺️ Map Directions Query Test</h1>
+        <p>Testing the fix for map directions queries after adding <code>extractMapDirectionsInfo</code> method.</p>
+        
+        <div class="test-section">
+            <div class="query">Query: "Is there a map showing directions to the airport?"</div>
+            <button onclick="testMapQuery()">Test Map Query</button>
+            <div id="mapStatus" class="status loading" style="display: none;">Testing...</div>
+            <div id="mapResponse" class="response" style="display: none;"></div>
+            <div id="mapScore" class="score" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <div class="query">Comparison Query: "What are the parking rates?"</div>
+            <button onclick="testParkingQuery()">Test Parking Query (Working)</button>
+            <div id="parkingStatus" class="status loading" style="display: none;">Testing...</div>
+            <div id="parkingResponse" class="response" style="display: none;"></div>
+            <div id="parkingScore" class="score" style="display: none;"></div>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <h3>Expected Result:</h3>
+            <p>The map query should return comprehensive information about maps and navigation options, NOT the generic transportation overview.</p>
+            <p><strong>Success criteria:</strong> Response should include "Google Maps", "GPS", "navigation", "downloadable maps", etc.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_PORTS = [3004, 3003, 3002, 3001, 3000];
+        let workingPort = null;
+
+        async function findWorkingPort() {
+            if (workingPort) return workingPort;
+            
+            for (const port of API_PORTS) {
+                try {
+                    const response = await fetch(`http://localhost:${port}/api/chat/send`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            message: 'test',
+                            sessionId: 'port-test-' + Date.now()
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        workingPort = port;
+                        console.log(`Found working server on port ${port}`);
+                        return port;
+                    }
+                } catch (err) {
+                    // Continue to next port
+                }
+            }
+            
+            throw new Error('No server found on any port');
+        }
+
+        async function testQuery(query, responseId, statusId, scoreId) {
+            const statusEl = document.getElementById(statusId);
+            const responseEl = document.getElementById(responseId);
+            const scoreEl = document.getElementById(scoreId);
+            
+            statusEl.style.display = 'block';
+            statusEl.className = 'status loading';
+            statusEl.textContent = 'Finding server...';
+            
+            try {
+                const port = await findWorkingPort();
+                statusEl.textContent = `Testing on port ${port}...`;
+                
+                const response = await fetch(`http://localhost:${port}/api/chat/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: 'test-' + Date.now()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Display response
+                responseEl.style.display = 'block';
+                responseEl.textContent = data.response;
+                
+                // Score the response
+                const score = scoreResponse(data.response, query);
+                scoreEl.style.display = 'block';
+                scoreEl.innerHTML = `Score: ${score.points}/10 - ${score.status}`;
+                scoreEl.className = 'score ' + (score.points >= 8 ? 'success' : score.points >= 4 ? 'warning' : 'error');
+                
+                // Update status
+                statusEl.className = 'status ' + (score.points >= 8 ? 'success' : 'error');
+                statusEl.textContent = score.points >= 8 ? '✅ Test Passed' : '❌ Test Failed';
+                
+            } catch (err) {
+                statusEl.className = 'status error';
+                statusEl.textContent = `❌ Error: ${err.message}`;
+                responseEl.style.display = 'block';
+                responseEl.textContent = 'Please start the server with "npm run dev" first.';
+            }
+        }
+
+        function scoreResponse(response, query) {
+            const lowerResponse = response.toLowerCase();
+            let points = 0;
+            
+            if (query.includes('map')) {
+                // Map-specific scoring
+                if (lowerResponse.includes('map')) points += 2;
+                if (lowerResponse.includes('google maps') || lowerResponse.includes('gps')) points += 2;
+                if (lowerResponse.includes('navigation')) points += 2;
+                if (lowerResponse.includes('directions')) points += 1;
+                if (lowerResponse.includes('download') || lowerResponse.includes('offline')) points += 1;
+                if (lowerResponse.includes('website') || lowerResponse.includes('mobile app')) points += 1;
+                if (lowerResponse.includes('real-time') || lowerResponse.includes('traffic')) points += 1;
+                
+                // Penalize generic responses
+                if (lowerResponse.includes('parking: multiple parking areas')) points = Math.max(0, points - 5);
+                if (lowerResponse.includes('for specific rates and schedules')) points = Math.max(0, points - 5);
+            } else {
+                // Parking query scoring
+                if (lowerResponse.includes('parking rates')) points += 2;
+                if (lowerResponse.includes('omr') || lowerResponse.includes('rial')) points += 2;
+                if (lowerResponse.includes('p1') || lowerResponse.includes('p3')) points += 2;
+                if (lowerResponse.includes('hour') || lowerResponse.includes('day')) points += 2;
+                if (lowerResponse.includes('terminal') || lowerResponse.includes('airport')) points += 1;
+                if (lowerResponse.includes('payment') || lowerResponse.includes('vat')) points += 1;
+            }
+            
+            let status;
+            if (points >= 8) status = '✅ EXCELLENT';
+            else if (points >= 6) status = '✅ GOOD';
+            else if (points >= 4) status = '⚠️ FAIR';
+            else status = '❌ POOR';
+            
+            return { points, status };
+        }
+
+        function testMapQuery() {
+            testQuery('Is there a map showing directions to the airport?', 'mapResponse', 'mapStatus', 'mapScore');
+        }
+
+        function testParkingQuery() {
+            testQuery('What are the parking rates at Muscat Airport?', 'parkingResponse', 'parkingStatus', 'parkingScore');
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source Links Test - Oman Airports Chatbot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e1e8ed;
+            border-radius: 12px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h2 {
+            margin: 0 0 20px 0;
+            color: #1e3c72;
+            font-size: 1.5em;
+            border-bottom: 2px solid #2a5298;
+            padding-bottom: 10px;
+        }
+        
+        .test-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #2a5298;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background: #fdf2f2;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            color: #27ae60;
+            background: #f2f8f2;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .response-text {
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .metric {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .metric-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2a5298;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .source-link-check {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .source-found {
+            color: #155724;
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        
+        .source-missing {
+            color: #721c24;
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        
+        .clear-btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            margin-left: 10px;
+        }
+        
+        .clear-btn:hover {
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Source Links Test</h1>
+            <p>Testing that all chatbot responses include proper source URL references</p>
+        </div>
+        
+        <div class="content">
+            <!-- Transportation Queries -->
+            <div class="test-section">
+                <h2>🚗 Transportation Queries</h2>
+                <div class="test-buttons">
+                    <button onclick="testQuery('Is car rental available at Muscat Airport?')">Car Rental Availability</button>
+                    <button onclick="testQuery('How much is taxi from airport to city?')">Taxi Rates</button>
+                    <button onclick="testQuery('Are there shuttle buses from the airport?')">Shuttle Services</button>
+                    <button onclick="testQuery('What is the parking rate for 30 minutes?')">Parking Rates</button>
+                </div>
+                <div id="transportation-results" class="results" style="display: none;"></div>
+            </div>
+            
+            <!-- Airport Services -->
+            <div class="test-section">
+                <h2>🏢 Airport Services</h2>
+                <div class="test-buttons">
+                    <button onclick="testQuery('What restaurants are available at the airport?')">Dining Options</button>
+                    <button onclick="testQuery('Is there shopping at Muscat Airport?')">Shopping</button>
+                    <button onclick="testQuery('Is WiFi available at the airport?')">WiFi/Connectivity</button>
+                    <button onclick="testQuery('Are there lounges at the airport?')">Lounges</button>
+                </div>
+                <div id="services-results" class="results" style="display: none;"></div>
+            </div>
+            
+            <!-- Facilities -->
+            <div class="test-section">
+                <h2>🏥 Facilities & Support</h2>
+                <div class="test-buttons">
+                    <button onclick="testQuery('Where are the prayer rooms?')">Prayer Facilities</button>
+                    <button onclick="testQuery('Is there medical assistance available?')">Medical Services</button>
+                    <button onclick="testQuery('Where are the restrooms?')">Restroom Facilities</button>
+                    <button onclick="testQuery('What if I lose my baggage?')">Lost Baggage</button>
+                </div>
+                <div id="facilities-results" class="results" style="display: none;"></div>
+            </div>
+            
+            <!-- General Info -->
+            <div class="test-section">
+                <h2>ℹ️ General Information</h2>
+                <div class="test-buttons">
+                    <button onclick="testQuery('Tell me about Muscat Airport')">General Airport Info</button>
+                    <button onclick="testQuery('What services are available?')">Available Services</button>
+                    <button onclick="testQuery('Airport facilities information')">Facilities Overview</button>
+                    <button onclick="clearAllResults()">Clear All Results</button>
+                </div>
+                <div id="general-results" class="results" style="display: none;"></div>
+            </div>
+            
+            <!-- Test Summary -->
+            <div class="test-section">
+                <h2>📊 Test Summary</h2>
+                <div id="test-summary">
+                    <p>Click test buttons above to verify source links are included in all responses.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = [];
+        
+        async function testQuery(query) {
+            const resultsDiv = document.getElementById(query.includes('rental') || query.includes('parking') || query.includes('shuttle') ? 'transport-results' : 'services-results');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div>🔄 Testing: "' + query + '"...</div>';
+            
+            try {
+                const sessionResponse = await fetch('/api/chat/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const sessionData = await sessionResponse.json();
+                
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: sessionData.sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Check for source links
+                const hasSourceLink = data.response.includes('🔗') || 
+                                    data.response.includes('More Information:');
+                
+                // Check for markdown links
+                const hasMarkdownLink = data.response.includes('[') && data.response.includes('](');
+                
+                // Convert markdown links to HTML for display
+                let displayResponse = data.response.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: none; font-weight: 500;">$1</a>');
+                displayResponse = displayResponse.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                displayResponse = displayResponse.replace(/\n/g, '<br>');
+                
+                testResults.push({
+                    query: query,
+                    hasSourceLink: hasSourceLink,
+                    hasMarkdownLink: hasMarkdownLink
+                });
+                
+                resultsDiv.innerHTML = `
+                    <div style="white-space: pre-wrap; margin-bottom: 10px; line-height: 1.6;">${displayResponse}</div>
+                    <div class="${hasSourceLink ? 'source-found' : 'source-missing'}">
+                        ${hasSourceLink ? '✅ Source link found' : '❌ No source link found'}
+                    </div>
+                    <div class="${hasMarkdownLink ? 'source-found' : 'source-missing'}" style="margin-top: 5px;">
+                        ${hasMarkdownLink ? '✅ Clickable markdown link found' : '❌ No clickable markdown link found'}
+                    </div>
+                    <div style="margin-top: 10px; padding: 10px; background: #f0f9ff; border-radius: 6px; font-size: 12px;">
+                        <strong>Link Test:</strong> ${hasMarkdownLink ? 'Links should be clickable and open in new tab' : 'No links to test'}
+                    </div>
+                `;
+                
+                updateSummary();
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div style="color: red;">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function updateSummary() {
+            const total = testResults.length;
+            const withLinks = testResults.filter(r => r.hasSourceLink).length;
+            const withClickableLinks = testResults.filter(r => r.hasMarkdownLink).length;
+            const percentage = total > 0 ? Math.round((withLinks/total)*100) : 0;
+            const clickablePercentage = total > 0 ? Math.round((withClickableLinks/total)*100) : 0;
+            
+            document.getElementById('test-summary').innerHTML = `
+                <p><strong>Tests Run:</strong> ${total}</p>
+                <p><strong>With Source Links:</strong> ${withLinks}/${total} (${percentage}%)</p>
+                <p><strong>With Clickable Links:</strong> ${withClickableLinks}/${total} (${clickablePercentage}%)</p>
+                <p style="color: ${percentage === 100 && clickablePercentage === 100 ? 'green' : 'orange'};">
+                    ${percentage === 100 && clickablePercentage === 100 ? 
+                        '🎉 All responses include clickable source links!' : 
+                        '⚠️ Some responses missing source links or clickable functionality'}
+                </p>
+                <div style="margin-top: 10px; padding: 10px; background: #e0f2fe; border-radius: 6px; font-size: 12px;">
+                    <strong>How to test:</strong> Click on any blue links in the responses above. They should open the Muscat Airport website in a new tab.
+                </div>
+            `;
+        }
+        
+        function clearAllResults() {
+            const containers = ['transportation-results', 'services-results', 'facilities-results', 'general-results'];
+            containers.forEach(id => {
+                const container = document.getElementById(id);
+                container.style.display = 'none';
+                container.innerHTML = '';
+            });
+            
+            testResults = [];
+            updateSummary();
+        }
+        
+        // Initialize summary
+        updateSummary();
+    </script>
+</body>
+</html> 

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focused Muscat Airport Scraper Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #2563eb;
+        }
+        .button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .success {
+            background: #10b981;
+        }
+        .error {
+            background: #ef4444;
+        }
+        .output {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .test-query {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛫 Focused Muscat Airport Scraper Test</h1>
+        <p>This page tests the focused scraping of <strong>muscatairport.co.om/en/content/to-from</strong> for accurate parking and transportation information.</p>
+    </div>
+
+    <div class="container">
+        <h2>🔧 System Health</h2>
+        <button class="button" onclick="checkScraperHealth()">Check Scraper Health</button>
+        <button class="button" onclick="getCacheStats()">View Cache Statistics</button>
+        <div id="health-output" class="output" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>🎯 Direct Muscat Airport Test</h2>
+        <p>Test the focused scraper that extracts parking rates and transportation info from the specific page.</p>
+        <button class="button" onclick="testDirectMuscatScraper()">Test Direct Muscat Scraper</button>
+        <div id="direct-output" class="output" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>💬 Chat Integration Test</h2>
+        <p>Test how the chatbot responds to parking and transportation queries using the focused scraper.</p>
+        <input type="text" class="test-query" id="testQuery" placeholder="Ask about parking rates, taxi services, transportation..." value="What are the parking rates at Muscat airport?">
+        <br>
+        <button class="button" onclick="testChatQuery()">Send Test Query</button>
+        <div id="chat-output" class="output" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔄 Scraper Actions</h2>
+        <button class="button" onclick="triggerFullScraping()">Trigger Full Scraping</button>
+        <button class="button" onclick="viewCachedContent()">View Cached Content</button>
+        <button class="button" onclick="cleanupCache()">Cleanup Cache</button>
+        <div id="actions-output" class="output" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_BASE = `${window.location.protocol}//${window.location.host}/api`;
+        let currentSession = null;
+
+        // Utility functions
+        function showOutput(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.innerHTML = `<div class="status ${type}">${new Date().toLocaleTimeString()}</div>${content}`;
+        }
+
+        function formatJson(obj) {
+            return '<pre>' + JSON.stringify(obj, null, 2) + '</pre>';
+        }
+
+        // System Health Tests
+        async function checkScraperHealth() {
+            try {
+                showOutput('health-output', 'Checking scraper health...', 'info');
+                
+                const response = await fetch(`${API_BASE}/admin/scraper?action=health`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    let healthInfo = '<h4>📊 Scraper Health Status</h4>';
+                    if (data.sources && data.sources.length > 0) {
+                        healthInfo += '<ul>';
+                        data.sources.forEach(source => {
+                            const status = source.isHealthy ? '✅' : '❌';
+                            healthInfo += `<li>${status} ${source.name}: ${source.status}</li>`;
+                        });
+                        healthInfo += '</ul>';
+                    } else {
+                        healthInfo += '<p>No source health data available</p>';
+                    }
+                    healthInfo += formatJson(data);
+                    showOutput('health-output', healthInfo, 'success');
+                } else {
+                    showOutput('health-output', `Health check failed: ${data.error}${formatJson(data)}`, 'error');
+                }
+            } catch (error) {
+                showOutput('health-output', `Health check error: ${error.message}`, 'error');
+            }
+        }
+
+        async function getCacheStats() {
+            try {
+                showOutput('health-output', 'Getting cache statistics...', 'info');
+                
+                const response = await fetch(`${API_BASE}/admin/scraper?action=cache_stats`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    let statsInfo = '<h4>📈 Cache Statistics</h4>';
+                    if (data.statistics) {
+                        const stats = data.statistics;
+                        statsInfo += `
+                            <p><strong>Total Entries:</strong> ${stats.total}</p>
+                            <p><strong>Active Entries:</strong> ${stats.active}</p>
+                            <p><strong>Expired Entries:</strong> ${stats.expired}</p>
+                            <p><strong>Oldest Entry:</strong> ${stats.oldestEntry ? new Date(stats.oldestEntry).toLocaleString() : 'None'}</p>
+                            <p><strong>Newest Entry:</strong> ${stats.newestEntry ? new Date(stats.newestEntry).toLocaleString() : 'None'}</p>
+                        `;
+                        
+                        if (stats.bySource && stats.bySource.length > 0) {
+                            statsInfo += '<h5>By Source:</h5><ul>';
+                            stats.bySource.forEach(source => {
+                                statsInfo += `<li>${source.source}: ${source.count} entries</li>`;
+                            });
+                            statsInfo += '</ul>';
+                        }
+                    }
+                    statsInfo += formatJson(data);
+                    showOutput('health-output', statsInfo, 'success');
+                } else {
+                    showOutput('health-output', `Cache stats failed: ${data.error}${formatJson(data)}`, 'error');
+                }
+            } catch (error) {
+                showOutput('health-output', `Cache stats error: ${error.message}`, 'error');
+            }
+        }
+
+        // Direct Muscat Airport Test
+        async function testDirectMuscatScraper() {
+            try {
+                showOutput('direct-output', 'Testing direct Muscat Airport scraper...', 'info');
+                
+                // Create a session first
+                if (!currentSession) {
+                    const sessionResponse = await fetch(`${API_BASE}/chat/session`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language: 'en' })
+                    });
+                    const sessionData = await sessionResponse.json();
+                    if (sessionData.success) {
+                        currentSession = sessionData.sessionId;
+                    }
+                }
+
+                // Test with a parking query to trigger the focused scraper
+                const testQuery = "What are the parking rates at Muscat airport?";
+                const response = await fetch(`${API_BASE}/chat/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: testQuery,
+                        sessionId: currentSession
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let resultInfo = '<h4>🎯 Direct Scraper Test Results</h4>';
+                    resultInfo += `<p><strong>Query:</strong> ${testQuery}</p>`;
+                    resultInfo += `<p><strong>Response:</strong></p><div style="background: #f0f9ff; padding: 10px; border-left: 4px solid #3b82f6;">${data.response}</div>`;
+                    
+                    if (data.sources && data.sources.length > 0) {
+                        resultInfo += '<h5>📚 Sources Used:</h5><ul>';
+                        data.sources.forEach(source => {
+                            resultInfo += `<li><strong>${source.title}</strong> (Relevance: ${source.relevance})<br><small>${source.url}</small></li>`;
+                        });
+                        resultInfo += '</ul>';
+                    }
+                    
+                    resultInfo += `<p><strong>Response Time:</strong> ${data.responseTime}ms</p>`;
+                    resultInfo += `<p><strong>Confidence:</strong> ${data.confidence || 'N/A'}</p>`;
+                    resultInfo += formatJson(data);
+                    showOutput('direct-output', resultInfo, 'success');
+                } else {
+                    showOutput('direct-output', `Direct scraper test failed: ${data.error}${formatJson(data)}`, 'error');
+                }
+            } catch (error) {
+                showOutput('direct-output', `Direct scraper test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Chat Integration Test
+        async function testChatQuery() {
+            try {
+                const query = document.getElementById('testQuery').value.trim();
+                if (!query) {
+                    showOutput('chat-output', 'Please enter a test query', 'error');
+                    return;
+                }
+
+                showOutput('chat-output', `Testing chat query: "${query}"...`, 'info');
+                
+                // Create session if needed
+                if (!currentSession) {
+                    const sessionResponse = await fetch(`${API_BASE}/chat/session`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language: 'en' })
+                    });
+                    const sessionData = await sessionResponse.json();
+                    if (sessionData.success) {
+                        currentSession = sessionData.sessionId;
+                    }
+                }
+
+                const response = await fetch(`${API_BASE}/chat/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: currentSession
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let chatInfo = '<h4>💬 Chat Response</h4>';
+                    chatInfo += `<div style="background: #f0f9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 10px 0;">${data.response}</div>`;
+                    
+                    if (data.sources && data.sources.length > 0) {
+                        chatInfo += '<h5>📚 Information Sources:</h5><ul>';
+                        data.sources.forEach(source => {
+                            chatInfo += `<li><strong>${source.title}</strong> (${Math.round(source.relevance * 100)}% relevant)<br><small><a href="${source.url}" target="_blank">${source.url}</a></small></li>`;
+                        });
+                        chatInfo += '</ul>';
+                    }
+                    
+                    chatInfo += `<p><strong>Response Time:</strong> ${data.responseTime}ms</p>`;
+                    if (data.confidence) {
+                        chatInfo += `<p><strong>Confidence:</strong> ${Math.round(data.confidence * 100)}%</p>`;
+                    }
+                    
+                    showOutput('chat-output', chatInfo, 'success');
+                } else {
+                    showOutput('chat-output', `Chat query failed: ${data.error}${formatJson(data)}`, 'error');
+                }
+            } catch (error) {
+                showOutput('chat-output', `Chat query error: ${error.message}`, 'error');
+            }
+        }
+
+        // Scraper Actions
+        async function triggerFullScraping() {
+            try {
+                showOutput('actions-output', 'Triggering full scraping of all sources...', 'info');
+                
+                const response = await fetch(`${API_BASE}/admin/scraper`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'scrape_all' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let scrapeInfo = '<h4>🔄 Full Scraping Results</h4>';
+                    scrapeInfo += `<p><strong>Message:</strong> ${data.message}</p>`;
+                    
+                    if (data.results && data.results.length > 0) {
+                        scrapeInfo += '<h5>📄 Scraped Content:</h5><ul>';
+                        data.results.forEach(result => {
+                            scrapeInfo += `<li><strong>${result.title}</strong><br>Source: ${result.source} | Category: ${result.category} | Relevance: ${result.relevance}</li>`;
+                        });
+                        scrapeInfo += '</ul>';
+                    }
+                    
+                    scrapeInfo += formatJson(data);
+                    showOutput('actions-output', scrapeInfo, 'success');
+                } else {
+                    showOutput('actions-output', `Full scraping failed: ${data.error}${formatJson(data)}`, 'error');
+                }
+            } catch (error) {
+                showOutput('actions-output', `Full scraping error: ${error.message}`, 'error');
+            }
+        }
+
+        async function viewCachedContent() {
+            try {
+                showOutput('actions-output', 'Loading cached content...', 'info');
+                
+                const response = await fetch(`${API_BASE}/admin/scraper?action=cached_content&limit=10`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    let contentInfo = '<h4>📚 Cached Content (Last 10 entries)</h4>';
+                    
+                    if (data.content && data.content.length > 0) {
+                        contentInfo += '<div style="max-height: 400px; overflow-y: auto;">';
+                        data.content.forEach((item, index) => {
+                            contentInfo += `
+                                <div style="border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; margin: 5px 0;">
+                                    <strong>Entry ${index + 1}:</strong> ${item.sourceUrl}<br>
+                                    <small>Created: ${new Date(item.createdAt).toLocaleString()}</small>
+                                </div>
+                            `;
+                        });
+                        contentInfo += '</div>';
+                    } else {
+                        contentInfo += '<p>No cached content found</p>';
+                    }
+                    
+                    contentInfo += formatJson(data);
+                    showOutput('actions-output', contentInfo, 'success');
+                } else {
+                    showOutput('actions-output', `View cached content failed: ${data.error}${formatJson(data)}`, 'error');
+                }
+            } catch (error) {
+                showOutput('actions-output', `View cached content error: ${error.message}`, 'error');
+            }
+        }
+
+        async function cleanupCache() {
+            try {
+                showOutput('actions-output', 'Cleaning up cache...', 'info');
+                
+                const response = await fetch(`${API_BASE}/admin/scraper`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'cleanup' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let cleanupInfo = '<h4>🧹 Cache Cleanup Results</h4>';
+                    cleanupInfo += `<p><strong>Message:</strong> ${data.message}</p>`;
+                    cleanupInfo += formatJson(data);
+                    showOutput('actions-output', cleanupInfo, 'success');
+                } else {
+                    showOutput('actions-output', `Cache cleanup failed: ${data.error}${formatJson(data)}`, 'error');
+                }
+            } catch (error) {
+                showOutput('actions-output', `Cache cleanup error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🛫 Focused Muscat Airport Scraper Test Page Loaded');
+            console.log('API Base:', API_BASE);
+        });
+    </script>
+</body>
+</html> 

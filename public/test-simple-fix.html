@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Link Fix Test</title>
+</head>
+<body>
+    <h1>Simple Link Fix Test</h1>
+    <div id="test-results"></div>
+    
+    <script>
+        function formatMessageContent(content) {
+            console.log('Input:', content);
+            
+            // Convert markdown links to HTML
+            let processed = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>');
+            
+            // Convert line breaks
+            processed = processed.replace(/\n/g, '<br>');
+            
+            // Convert bold text
+            processed = processed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert bullet points
+            processed = processed.replace(/<br>\s*-\s*/g, '<br>• ');
+            processed = processed.replace(/^-\s*/g, '• ');
+            
+            console.log('Output:', processed);
+            return processed;
+        }
+
+        // Test the function
+        const testInput = `Based on current information from Muscat Airport: The parking rate for 30 minutes at Muscat Airport is **OMR 3.200**. This applies to both P1 (Short Term) and P2 (Short Term & Premium) parking areas. 🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+        
+        const result = formatMessageContent(testInput);
+        document.getElementById('test-results').innerHTML = result;
+    </script>
+    
+    <style>
+        .chat-link {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+        .chat-link:hover {
+            color: #004499;
+        }
+    </style>
+</body>
+</html> 

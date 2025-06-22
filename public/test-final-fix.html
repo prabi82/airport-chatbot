@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Link Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .chat-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .chat-link:hover {
+            color: #1d4ed8;
+            border-bottom-color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin: -2px -4px;
+        }
+        
+        .test-section {
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .result {
+            border: 2px solid #2563eb;
+            padding: 20px;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .console-output {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .source-link-container {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            font-size: 13px;
+        }
+        
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Final Link Fix Test</h1>
+    <p>Testing the new placeholder-based approach for processing markdown links.</p>
+    
+    <div class="test-section">
+        <h3>Test 1: Simple Link</h3>
+        <div id="test1-input" style="background: #f0f0f0; padding: 10px; margin: 10px 0;"></div>
+        <div class="result" id="test1-output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 2: Link with Bold Text</h3>
+        <div id="test2-input" style="background: #f0f0f0; padding: 10px; margin: 10px 0;"></div>
+        <div class="result" id="test2-output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 3: Full API Response Format</h3>
+        <div id="test3-input" style="background: #f0f0f0; padding: 10px; margin: 10px 0;"></div>
+        <div class="result" id="test3-output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test 4: Live API Test</h3>
+        <button onclick="testLiveAPI()" style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">Test Live API</button>
+        <div id="test4-output"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Console Output</h3>
+        <div class="console-output" id="console-output"></div>
+    </div>
+
+    <script>
+        // Capture console logs
+        let consoleOutput = '';
+        const originalLog = console.log;
+        console.log = function(...args) {
+            consoleOutput += args.join(' ') + '\n';
+            document.getElementById('console-output').textContent = consoleOutput;
+            originalLog.apply(console, arguments);
+        };
+        
+        // New formatMessageContent function with placeholder approach
+        function formatMessageContent(content) {
+            console.log('🔍 Processing message content:', content);
+            
+            // Step 1: Extract and protect markdown links first
+            const linkPlaceholders = [];
+            let linkCounter = 0;
+            
+            // Find all markdown links and replace them with placeholders
+            let processed = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                const placeholder = `__LINK_PLACEHOLDER_${linkCounter}__`;
+                linkPlaceholders[linkCounter] = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+                linkCounter++;
+                console.log(`🔗 Found link: "${text}" -> "${url}"`);
+                return placeholder;
+            });
+            
+            console.log('🔗 After link extraction:', processed);
+            console.log('🔗 Link placeholders:', linkPlaceholders);
+            
+            // Step 2: Escape HTML content (but not our placeholders)
+            const div = document.createElement('div');
+            div.textContent = processed;
+            let escaped = div.innerHTML;
+            
+            console.log('🔒 After HTML escaping:', escaped);
+            
+            // Step 3: Convert line breaks to <br> tags
+            escaped = escaped.replace(/\n/g, '<br>');
+            
+            // Step 4: Convert **text** to bold
+            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            console.log('📝 After bold processing:', escaped);
+            
+            // Step 5: Convert bullet points (•) to proper list items
+            escaped = escaped.replace(/^• (.+)$/gm, '<div class="bullet-point">• $1</div>');
+            
+            // Step 6: Convert markdown-style headers (## text) to styled headers
+            escaped = escaped.replace(/^## (.+)$/gm, '<div class="message-header">$1</div>');
+            
+            // Step 7: Convert sections with **Section:** pattern
+            escaped = escaped.replace(/\*\*([^:]+):\*\*/g, '<div class="section-header">$1:</div>');
+            
+            // Step 8: Convert 🔗 emoji followed by **More Information:** pattern for better styling
+            escaped = escaped.replace(/🔗\s*<strong>([^<]+)<\/strong>/g, '<div class="source-link-container">🔗 <strong>$1</strong></div>');
+            
+            // Step 9: Restore links by replacing placeholders
+            linkPlaceholders.forEach((linkHtml, index) => {
+                const placeholder = `__LINK_PLACEHOLDER_${index}__`;
+                escaped = escaped.replace(placeholder, linkHtml);
+                console.log(`🔗 Restored link ${index}: ${placeholder} -> ${linkHtml}`);
+            });
+            
+            console.log('✨ Final result:', escaped);
+            return escaped;
+        }
+        
+        // Test cases
+        const tests = [
+            {
+                name: "Simple Link",
+                input: "Check out [Muscat Airport](https://www.muscatairport.co.om) for more info."
+            },
+            {
+                name: "Link with Bold Text",
+                input: "🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)"
+            },
+            {
+                name: "Full API Response",
+                input: `Based on current information from Muscat Airport:
+
+The parking rate for 30 minutes at Muscat Airport is **OMR 0.600**.
+
+This applies to both P1 (Short Term) and P2 (Short Term & Premium) parking areas.
+
+🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`
+            }
+        ];
+        
+        // Run tests
+        tests.forEach((test, index) => {
+            const testNum = index + 1;
+            
+            // Show input
+            document.getElementById(`test${testNum}-input`).textContent = test.input;
+            
+            // Process and show output
+            console.log(`\n=== TEST ${testNum}: ${test.name} ===`);
+            const result = formatMessageContent(test.input);
+            const outputDiv = document.getElementById(`test${testNum}-output`);
+            
+            outputDiv.innerHTML = `
+                <h4>Processed Result:</h4>
+                ${result}
+                
+                <h4>Analysis:</h4>
+                <div style="margin-top: 10px; font-size: 14px;">
+                    <span class="${result.includes('<a ') ? 'success' : 'error'}">
+                        ${result.includes('<a ') ? '✅' : '❌'} Contains link tags
+                    </span><br>
+                    <span class="${result.includes('href=') ? 'success' : 'error'}">
+                        ${result.includes('href=') ? '✅' : '❌'} Has href attribute
+                    </span><br>
+                    <span class="${result.includes('target="_blank"') ? 'success' : 'error'}">
+                        ${result.includes('target="_blank"') ? '✅' : '❌'} Opens in new tab
+                    </span><br>
+                    <span class="${result.includes('class="chat-link"') ? 'success' : 'error'}">
+                        ${result.includes('class="chat-link"') ? '✅' : '❌'} Has proper CSS class
+                    </span>
+                </div>
+            `;
+        });
+        
+        // Live API test
+        async function testLiveAPI() {
+            const outputDiv = document.getElementById('test4-output');
+            outputDiv.innerHTML = '<div style="color: blue; margin: 10px 0;">🔄 Testing with live API...</div>';
+            
+            try {
+                // Create session
+                const sessionResponse = await fetch('/api/chat/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const sessionData = await sessionResponse.json();
+                
+                // Send parking query
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'What is the parking rate for 30 minutes?',
+                        sessionId: sessionData.sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                console.log('\n=== LIVE API TEST ===');
+                const processed = formatMessageContent(data.response);
+                
+                outputDiv.innerHTML = `
+                    <div class="result">
+                        <h4>✅ Live API Test Result:</h4>
+                        <p><strong>Raw Response:</strong></p>
+                        <div style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-size: 12px; white-space: pre-wrap;">${data.response}</div>
+                        
+                        <p><strong>Processed Result:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; background: white;">
+                            ${processed}
+                        </div>
+                        
+                        <p><strong>Link Test:</strong></p>
+                        <div style="font-size: 14px;">
+                            <span class="${processed.includes('<a ') ? 'success' : 'error'}">
+                                ${processed.includes('<a ') ? '✅' : '❌'} Clickable links generated
+                            </span><br>
+                            <span class="${processed.includes('Muscat Airport') && processed.includes('href=') ? 'success' : 'error'}">
+                                ${processed.includes('Muscat Airport') && processed.includes('href=') ? '✅' : '❌'} Proper link text and URL
+                            </span>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                outputDiv.innerHTML = `<div style="color: red; margin: 10px 0;">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        console.log('🚀 All tests completed. Check results above.');
+    </script>
+</body>
+</html> 

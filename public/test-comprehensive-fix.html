@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Link Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .chat-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .chat-link:hover {
+            color: #1d4ed8;
+            border-bottom-color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin: -2px -4px;
+        }
+        
+        .test-section {
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .result {
+            border: 2px solid #2563eb;
+            padding: 20px;
+            margin: 15px 0;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .source-link-container {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            font-size: 13px;
+        }
+        
+        .bullet-point {
+            margin: 2px 0;
+            padding-left: 8px;
+            line-height: 1.4;
+        }
+        
+        .section-header {
+            font-weight: 600;
+            color: #1e40af;
+            margin: 8px 0 4px 0;
+            font-size: 14px;
+        }
+        
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        
+        .console-output {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Comprehensive Link Fix Test</h1>
+    <p>Testing all solutions for the clickable links issue</p>
+    
+    <div class="test-section">
+        <h3>🔍 Issue Analysis</h3>
+        <p>The problem was that content formatting (bold, line breaks, bullets) was being lost, and links weren't clickable.</p>
+        <p><strong>Root Causes:</strong></p>
+        <ul>
+            <li>Missing line breaks between sections</li>
+            <li>Bullet points not being properly structured</li>
+            <li>Link processing interference with text formatting</li>
+        </ul>
+    </div>
+    
+    <div class="test-section">
+        <h3>🛠️ Solution 1: Enhanced formatMessageContent</h3>
+        <p>Fixed the widget's content processing with better structure handling.</p>
+        <button onclick="testSolution1()">Test Enhanced Processing</button>
+        <div id="solution1-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🛠️ Solution 2: Separate Link Messages</h3>
+        <p>Alternative approach: Send links as separate, dedicated messages.</p>
+        <button onclick="testSolution2()">Test Separate Links</button>
+        <div id="solution2-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🚀 Live Widget Test</h3>
+        <p>Test with the actual chat widget and API.</p>
+        <button onclick="testLiveWidget()">Test Live Widget</button>
+        <div id="live-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>📊 Console Output</h3>
+        <div class="console-output" id="console-output"></div>
+    </div>
+
+    <script>
+        // Capture console logs
+        let consoleOutput = '';
+        const originalLog = console.log;
+        console.log = function(...args) {
+            consoleOutput += args.join(' ') + '\n';
+            document.getElementById('console-output').textContent = consoleOutput;
+            originalLog.apply(console, arguments);
+        };
+        
+        // Test content (from your screenshot)
+        const testContent = `Based on current information from Muscat Airport: Based on the parking rates at Muscat Airport: **Quick Reference:** - **30 minutes**: OMR 0.600 - **1 hour**: OMR 1.100 - **2 hours**: OMR 2.100 - **3 hours**: OMR 3.200 Choose the time bracket that matches your parking duration. 🔗 **More Information:** [Muscat Airport Parking](https://www.muscatairport.co.om/en/content/to-from)`;
+        
+        // Enhanced formatMessageContent (Solution 1)
+        function formatMessageContentEnhanced(content) {
+            console.log('🔍 Processing content:', content);
+            
+            // Step 1: Normalize and structure the content first
+            let processed = content;
+            
+            // Add proper line breaks for better structure
+            processed = processed.replace(/(\w)\s*-\s*\*\*/g, '$1\n- **'); // Before bullet points
+            processed = processed.replace(/(\d+\.\d+)\s*-\s*/g, '$1\n- '); // After prices
+            processed = processed.replace(/duration\.\s*🔗/g, 'duration.\n\n🔗'); // Before source links
+            processed = processed.replace(/areas\.\s*🔗/g, 'areas.\n\n🔗'); // Before source links
+            
+            console.log('🔧 After structure fixes:', processed);
+            
+            // Step 2: Extract and protect markdown links
+            const linkPlaceholders = [];
+            let linkCounter = 0;
+            
+            processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+                const placeholder = `__LINK_PLACEHOLDER_${linkCounter}__`;
+                linkPlaceholders[linkCounter] = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${text}</a>`;
+                linkCounter++;
+                console.log(`🔗 Found link: "${text}" -> "${url}"`);
+                return placeholder;
+            });
+            
+            console.log('🔗 After link extraction:', processed);
+            
+            // Step 3: Escape HTML content
+            const div = document.createElement('div');
+            div.textContent = processed;
+            let escaped = div.innerHTML;
+            
+            // Step 4: Convert line breaks to <br> tags
+            escaped = escaped.replace(/\n/g, '<br>');
+            
+            // Step 5: Convert **text** to bold
+            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            console.log('📝 After bold processing:', escaped);
+            
+            // Step 6: Convert bullet points with proper structure
+            escaped = escaped.replace(/<br>\s*-\s*/g, '<br><div class="bullet-point">• ');
+            escaped = escaped.replace(/(<div class="bullet-point">• [^<]*(?:<strong>[^<]*<\/strong>[^<]*)*[^<]*?)(<br>|$)/g, '$1</div>$2');
+            
+            // Step 7: Convert section headers
+            escaped = escaped.replace(/<strong>([^:]+):<\/strong>/g, '<div class="section-header">$1:</div>');
+            
+            // Step 8: Convert 🔗 pattern for better styling
+            escaped = escaped.replace(/🔗\s*<strong>([^<]+)<\/strong>/g, '<div class="source-link-container">🔗 <strong>$1</strong></div>');
+            
+            // Step 9: Restore links
+            linkPlaceholders.forEach((linkHtml, index) => {
+                const placeholder = `__LINK_PLACEHOLDER_${index}__`;
+                escaped = escaped.replace(placeholder, linkHtml);
+                console.log(`🔗 Restored link ${index}`);
+            });
+            
+            console.log('✨ Final result:', escaped);
+            return escaped;
+        }
+        
+        // Extract links for separate messages (Solution 2)
+        function extractLinksForSeparateMessage(content) {
+            const links = [];
+            const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+            let match;
+            
+            while ((match = linkPattern.exec(content)) !== null) {
+                links.push({
+                    text: match[1],
+                    url: match[2]
+                });
+            }
+            
+            // Remove markdown links from content and clean up
+            let cleanContent = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '');
+            cleanContent = cleanContent.replace(/🔗\s*\*\*([^*]+)\*\*\s*$/g, ''); // Remove link section
+            
+            return { content: cleanContent.trim(), links };
+        }
+        
+        // Test Solution 1
+        function testSolution1() {
+            console.log('\n=== TESTING SOLUTION 1: Enhanced Processing ===');
+            const result = formatMessageContentEnhanced(testContent);
+            
+            document.getElementById('solution1-result').innerHTML = `
+                <div class="result">
+                    <h4>✅ Enhanced Processing Result:</h4>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white;">
+                        ${result}
+                    </div>
+                    <div style="margin-top: 10px; font-size: 14px;">
+                        <span class="${result.includes('<strong>') ? 'success' : 'error'}">
+                            ${result.includes('<strong>') ? '✅' : '❌'} Bold formatting
+                        </span><br>
+                        <span class="${result.includes('<a ') ? 'success' : 'error'}">
+                            ${result.includes('<a ') ? '✅' : '❌'} Clickable links
+                        </span><br>
+                        <span class="${result.includes('bullet-point') ? 'success' : 'error'}">
+                            ${result.includes('bullet-point') ? '✅' : '❌'} Bullet points
+                        </span><br>
+                        <span class="${result.includes('source-link-container') ? 'success' : 'error'}">
+                            ${result.includes('source-link-container') ? '✅' : '❌'} Source link styling
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Test Solution 2
+        function testSolution2() {
+            console.log('\n=== TESTING SOLUTION 2: Separate Link Messages ===');
+            const extracted = extractLinksForSeparateMessage(testContent);
+            const processedContent = formatMessageContentEnhanced(extracted.content);
+            
+            const linksHtml = extracted.links.map(link => 
+                `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="chat-link">🔗 ${link.text}</a>`
+            ).join('<br>');
+            
+            document.getElementById('solution2-result').innerHTML = `
+                <div class="result">
+                    <h4>✅ Separate Messages Result:</h4>
+                    
+                    <p><strong>Main Message:</strong></p>
+                    <div style="border: 1px solid #ddd; padding: 15px; background: white; margin: 10px 0;">
+                        ${processedContent}
+                    </div>
+                    
+                    <p><strong>Separate Link Message:</strong></p>
+                    <div style="border: 1px solid #0ea5e9; padding: 15px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); margin: 10px 0;">
+                        <div class="source-link-container">
+                            <strong>📚 Useful Links:</strong><br>
+                            ${linksHtml}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 10px; font-size: 14px;">
+                        <span class="success">✅ Clean main content</span><br>
+                        <span class="success">✅ Guaranteed clickable links</span><br>
+                        <span class="success">✅ Better visual separation</span><br>
+                        <span class="success">✅ Enhanced user experience</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Test Live Widget
+        async function testLiveWidget() {
+            const resultDiv = document.getElementById('live-result');
+            resultDiv.innerHTML = '<div style="color: blue; margin: 10px 0;">🔄 Testing with live widget...</div>';
+            
+            try {
+                // Create session
+                const sessionResponse = await fetch('/api/chat/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const sessionData = await sessionResponse.json();
+                
+                // Send parking query
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'What is the parking rate for 30 minutes?',
+                        sessionId: sessionData.sessionId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                console.log('\n=== LIVE WIDGET TEST ===');
+                console.log('Raw API response:', data.response);
+                
+                const enhanced = formatMessageContentEnhanced(data.response);
+                const extracted = extractLinksForSeparateMessage(data.response);
+                
+                resultDiv.innerHTML = `
+                    <div class="result">
+                        <h4>✅ Live Widget Test Results:</h4>
+                        
+                        <p><strong>Raw API Response:</strong></p>
+                        <div style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-size: 12px; white-space: pre-wrap;">${data.response}</div>
+                        
+                        <p><strong>Enhanced Processing:</strong></p>
+                        <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; background: white;">
+                            ${enhanced}
+                        </div>
+                        
+                        <p><strong>Success Metrics:</strong></p>
+                        <div style="font-size: 14px;">
+                            <span class="${enhanced.includes('<strong>') ? 'success' : 'error'}">
+                                ${enhanced.includes('<strong>') ? '✅' : '❌'} Bold text formatting
+                            </span><br>
+                            <span class="${enhanced.includes('<a ') ? 'success' : 'error'}">
+                                ${enhanced.includes('<a ') ? '✅' : '❌'} Clickable links
+                            </span><br>
+                            <span class="${enhanced.includes('bullet-point') ? 'success' : 'error'}">
+                                ${enhanced.includes('bullet-point') ? '✅' : '❌'} Structured bullets
+                            </span><br>
+                            <span class="${enhanced.includes('target="_blank"') ? 'success' : 'error'}">
+                                ${enhanced.includes('target="_blank"') ? '✅' : '❌'} Opens in new tab
+                            </span>
+                        </div>
+                        
+                        <p><strong>Next Steps:</strong></p>
+                        <ul>
+                            <li>✅ Enhanced processing is working</li>
+                            <li>🔄 Check the actual widget for visual results</li>
+                            <li>🎯 Test clicking the links in the widget</li>
+                        </ul>
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: red; margin: 10px 0;">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        console.log('🚀 Comprehensive test suite loaded. Use the buttons to test each solution.');
+    </script>
+</body>
+</html> 

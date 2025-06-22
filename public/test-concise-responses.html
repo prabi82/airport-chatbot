@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Concise Responses - Oman Airports Chatbot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .test-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .test-button:hover {
+            background-color: #2980b9;
+        }
+        .test-button.car-rental {
+            background-color: #e74c3c;
+        }
+        .test-button.car-rental:hover {
+            background-color: #c0392b;
+        }
+        .test-button.taxi {
+            background-color: #f39c12;
+        }
+        .test-button.taxi:hover {
+            background-color: #d68910;
+        }
+        .test-button.shuttle {
+            background-color: #27ae60;
+        }
+        .test-button.shuttle:hover {
+            background-color: #229954;
+        }
+        .response-area {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: white;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .loading {
+            color: #3498db;
+            font-style: italic;
+        }
+        .error {
+            color: #e74c3c;
+        }
+        .success {
+            color: #27ae60;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.loading {
+            background-color: #ebf3fd;
+            color: #3498db;
+        }
+        .status.success {
+            background-color: #eafaf1;
+            color: #27ae60;
+        }
+        .status.error {
+            background-color: #fdeaea;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Test Concise Responses</h1>
+            <p>Testing the improved concise response system for transportation queries</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🚗 Car Rental Tests</h3>
+            <p>These tests should return concise, summarized information instead of data dumps:</p>
+            <button class="test-button car-rental" onclick="testQuery('Is car rental available at Muscat Airport?')">
+                Test: Car Rental Availability
+            </button>
+            <button class="test-button car-rental" onclick="testQuery('Can I rent a car at the airport?')">
+                Test: Car Rental Simple Query
+            </button>
+            <button class="test-button car-rental" onclick="testQuery('What car rental companies are at Muscat Airport?')">
+                Test: Car Rental Companies
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>🚕 Taxi Service Tests</h3>
+            <p>Testing taxi information summarization:</p>
+            <button class="test-button taxi" onclick="testQuery('Are taxis available at Muscat Airport?')">
+                Test: Taxi Availability
+            </button>
+            <button class="test-button taxi" onclick="testQuery('How much do taxis cost from the airport?')">
+                Test: Taxi Rates
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>🚌 Shuttle/Bus Tests</h3>
+            <p>Testing shuttle and bus information summarization:</p>
+            <button class="test-button shuttle" onclick="testQuery('Is there a shuttle bus from Muscat Airport?')">
+                Test: Shuttle Availability
+            </button>
+            <button class="test-button shuttle" onclick="testQuery('What bus services are available at the airport?')">
+                Test: Bus Services
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Response Analysis</h3>
+            <div id="responseArea" class="response-area">
+                Click any test button above to see the response...
+            </div>
+            <div id="statusArea"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Custom Query Test</h3>
+            <input type="text" id="customQuery" placeholder="Enter your own query..." style="width: 70%; padding: 10px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px;">
+            <button class="test-button" onclick="testCustomQuery()">Test Custom Query</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+
+        async function testQuery(query) {
+            const responseArea = document.getElementById('responseArea');
+            const statusArea = document.getElementById('statusArea');
+            
+            // Show loading state
+            responseArea.textContent = 'Loading...';
+            responseArea.className = 'response-area loading';
+            statusArea.innerHTML = '<div class="status loading">🔄 Processing query...</div>';
+            
+            try {
+                // Create session if needed
+                if (!currentSessionId) {
+                    const sessionResponse = await fetch('/api/chat/session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (sessionResponse.ok) {
+                        const sessionData = await sessionResponse.json();
+                        currentSessionId = sessionData.sessionId;
+                    }
+                }
+
+                // Send the query
+                const startTime = Date.now();
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: currentSessionId
+                    })
+                });
+
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Display the response
+                    responseArea.textContent = `Query: "${query}"\n\nResponse:\n${data.message}`;
+                    responseArea.className = 'response-area success';
+                    
+                    // Show success status
+                    statusArea.innerHTML = `
+                        <div class="status success">
+                            ✅ Response received successfully!<br>
+                            📊 Response time: ${responseTime}ms<br>
+                            📏 Response length: ${data.message.length} characters<br>
+                            🎯 Intent: ${data.intent || 'Unknown'}<br>
+                            🔍 Confidence: ${data.confidence || 'N/A'}
+                        </div>
+                    `;
+                    
+                    // Analyze response quality
+                    analyzeResponseQuality(data.message, query);
+                    
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                console.error('Error testing query:', error);
+                responseArea.textContent = `Error: ${error.message}`;
+                responseArea.className = 'response-area error';
+                statusArea.innerHTML = '<div class="status error">❌ Error occurred during testing</div>';
+            }
+        }
+
+        async function testCustomQuery() {
+            const customQuery = document.getElementById('customQuery').value.trim();
+            if (!customQuery) {
+                alert('Please enter a query to test');
+                return;
+            }
+            
+            await testQuery(customQuery);
+        }
+
+        function analyzeResponseQuality(response, query) {
+            const analysisDiv = document.createElement('div');
+            analysisDiv.style.marginTop = '15px';
+            analysisDiv.style.padding = '15px';
+            analysisDiv.style.backgroundColor = '#f8f9fa';
+            analysisDiv.style.border = '1px solid #dee2e6';
+            analysisDiv.style.borderRadius = '6px';
+            
+            let analysis = '📋 Response Quality Analysis:\n\n';
+            
+            // Check if response is concise (not too long)
+            const isReasonableLength = response.length < 1000;
+            analysis += `📏 Length: ${response.length} characters - ${isReasonableLength ? '✅ Concise' : '⚠️ Too long'}\n`;
+            
+            // Check if it contains structured information
+            const hasStructure = response.includes('**') || response.includes('•') || response.includes('✅');
+            analysis += `📊 Structure: ${hasStructure ? '✅ Well formatted' : '⚠️ Plain text'}\n`;
+            
+            // Check if it answers the specific question
+            const queryWords = query.toLowerCase().split(' ').filter(w => w.length > 2);
+            const responseWords = response.toLowerCase();
+            const relevantWords = queryWords.filter(word => responseWords.includes(word));
+            const relevanceScore = (relevantWords.length / queryWords.length) * 100;
+            analysis += `🎯 Relevance: ${relevanceScore.toFixed(0)}% - ${relevanceScore > 70 ? '✅ Highly relevant' : relevanceScore > 40 ? '⚠️ Moderately relevant' : '❌ Low relevance'}\n`;
+            
+            // Check for data dumping indicators
+            const hasDataDump = response.includes('|') && response.split('|').length > 10;
+            analysis += `📋 Data Quality: ${hasDataDump ? '❌ Contains data dump' : '✅ Processed information'}\n`;
+            
+            analysisDiv.textContent = analysis;
+            
+            const statusArea = document.getElementById('statusArea');
+            statusArea.appendChild(analysisDiv);
+        }
+
+        // Allow Enter key for custom query
+        document.getElementById('customQuery').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testCustomQuery();
+            }
+        });
+    </script>
+</body>
+</html> 

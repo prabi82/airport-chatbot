@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Car Rental Query - Oman Airports Chatbot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        .test-button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .test-button:hover {
+            background-color: #c0392b;
+        }
+        .response-area {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: white;
+            min-height: 100px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .debug-info {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.loading {
+            background-color: #ebf3fd;
+            color: #3498db;
+        }
+        .status.success {
+            background-color: #eafaf1;
+            color: #27ae60;
+        }
+        .status.error {
+            background-color: #fdeaea;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Debug Car Rental Query</h1>
+            <p>Testing the car rental query to see what's happening</p>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button class="test-button" onclick="testCarRentalQuery()">
+                🚗 Test: "Is car rental available at Muscat Airport?"
+            </button>
+            <button class="test-button" onclick="testCarRentalQuery2()">
+                🚗 Test: "Can I rent a car at the airport?"
+            </button>
+        </div>
+
+        <div id="responseArea" class="response-area">
+            Click a test button above to see the response...
+        </div>
+        
+        <div id="debugInfo" class="debug-info" style="display: none;">
+            Debug information will appear here...
+        </div>
+        
+        <div id="statusArea"></div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+
+        async function testCarRentalQuery() {
+            await testQuery("Is car rental available at Muscat Airport?");
+        }
+
+        async function testCarRentalQuery2() {
+            await testQuery("Can I rent a car at the airport?");
+        }
+
+        async function testQuery(query) {
+            const responseArea = document.getElementById('responseArea');
+            const statusArea = document.getElementById('statusArea');
+            const debugInfo = document.getElementById('debugInfo');
+            
+            // Show loading state
+            responseArea.textContent = 'Loading...';
+            statusArea.innerHTML = '<div class="status loading">🔄 Processing query...</div>';
+            debugInfo.style.display = 'none';
+            
+            try {
+                // Create session if needed
+                if (!currentSessionId) {
+                    console.log('Creating new session...');
+                    const sessionResponse = await fetch('/api/chat/session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (sessionResponse.ok) {
+                        const sessionData = await sessionResponse.json();
+                        currentSessionId = sessionData.sessionId;
+                        console.log('Session created:', currentSessionId);
+                    } else {
+                        throw new Error(`Session creation failed: ${sessionResponse.status}`);
+                    }
+                }
+
+                // Send the query
+                console.log('Sending query:', query);
+                const startTime = Date.now();
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: currentSessionId
+                    })
+                });
+
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                console.log('Response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    // Get the actual response message (API returns 'response' not 'message')
+                    const actualMessage = data.response || data.message || 'No message in response';
+                    
+                    // Display the response
+                    responseArea.textContent = `Query: "${query}"\n\nResponse:\n${actualMessage}`;
+                    
+                    // Show debug information
+                    debugInfo.innerHTML = `
+                        <strong>🔍 Debug Information:</strong><br>
+                        📊 Response time: ${responseTime}ms<br>
+                        📏 Response length: ${actualMessage.length} characters<br>
+                        🎯 Intent: ${data.intent || 'Unknown'}<br>
+                        🔍 Confidence: ${data.confidence || 'N/A'}<br>
+                        📋 Session ID: ${currentSessionId}<br>
+                        🔧 Raw Response: <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    debugInfo.style.display = 'block';
+                    
+                    // Analyze response quality
+                    if (actualMessage && actualMessage !== 'No message in response') {
+                        const isReasonableLength = actualMessage.length < 1000;
+                        const hasStructure = actualMessage.includes('**') || actualMessage.includes('•') || actualMessage.includes('✅');
+                        const hasDataDump = actualMessage.includes('|') && actualMessage.split('|').length > 10;
+                        const isCarRentalResponse = actualMessage.toLowerCase().includes('car rental at muscat airport');
+                        const isGenericResponse = actualMessage.toLowerCase().includes('could you please be more specific');
+                        
+                        const isFixed = isReasonableLength && hasStructure && !hasDataDump && isCarRentalResponse;
+                        
+                        statusArea.innerHTML = `
+                            <div class="status ${isFixed ? 'success' : 'error'}">
+                                ${isFixed ? '✅ FIXED - Using new concise format!' : '❌ STILL BROKEN - Using old data dump format'}<br>
+                                📏 Length: ${isReasonableLength ? '✅ Concise' : '⚠️ Too long'} (${actualMessage.length} chars)<br>
+                                📊 Structure: ${hasStructure ? '✅ Well formatted' : '⚠️ Plain text'}<br>
+                                📋 Data Quality: ${hasDataDump ? '❌ Contains data dump' : '✅ Processed information'}<br>
+                                🚗 Car Rental Format: ${isCarRentalResponse ? '✅ Using new format' : '❌ Still using old format'}<br>
+                                🎯 Intent Detection: ${data.intent === 'transportation' ? '✅ Correctly detected' : '❌ Wrong intent: ' + data.intent}<br>
+                                🤖 Response Type: ${isGenericResponse ? '❌ Generic fallback' : '✅ Specific response'}
+                            </div>
+                        `;
+                    } else {
+                        statusArea.innerHTML = '<div class="status error">❌ No message in response</div>';
+                    }
+                    
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+            } catch (error) {
+                console.error('Error testing query:', error);
+                responseArea.textContent = `Error: ${error.message}`;
+                statusArea.innerHTML = '<div class="status error">❌ Error occurred during testing</div>';
+                
+                debugInfo.innerHTML = `
+                    <strong>🔍 Error Debug Information:</strong><br>
+                    ❌ Error: ${error.message}<br>
+                    📋 Session ID: ${currentSessionId || 'None'}<br>
+                    🔧 Stack: <pre>${error.stack}</pre>
+                `;
+                debugInfo.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html> 

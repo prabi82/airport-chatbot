@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate"
@@ -12,9 +12,12 @@
   "dependencies": {
     "@prisma/client": "^6.10.1",
     "axios": "^1.10.0",
+    "cheerio": "^1.1.0",
+    "crypto-js": "^4.2.0",
     "next": "15.3.4",
     "ollama": "^0.5.16",
     "prisma": "^6.10.1",
+    "puppeteer": "^24.10.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redis": "^5.5.6",
@@ -23,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/crypto-js": "^4.2.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

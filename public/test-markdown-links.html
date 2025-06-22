@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Link Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .chat-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .chat-link:hover {
+            color: #1d4ed8;
+            border-bottom-color: #2563eb;
+            background-color: rgba(37, 99, 235, 0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin: -2px -4px;
+        }
+        .source-link-container {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Markdown Link Processing Test</h1>
+    
+    <div class="test-container">
+        <h3>Test Input:</h3>
+        <pre>🔗 **More Information:** [Muscat Airport Transportation](https://www.muscatairport.co.om/en/content/to-from)</pre>
+        
+        <h3>Expected Output:</h3>
+        <div id="output"></div>
+        
+        <h3>Test Result:</h3>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Copy the formatMessageContent function from the chat widget
+        function formatMessageContent(content) {
+            // First, process markdown links BEFORE escaping HTML
+            // This ensures [text](url) patterns are converted before [ and ] become HTML entities
+            let processed = content;
+            
+            // Convert markdown links [text](url) to clickable links that open in new tab
+            processed = processed.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>');
+            
+            // Now escape HTML for the rest of the content, but preserve our links
+            const parts = processed.split(/(<a[^>]*>.*?<\/a>)/);
+            let escaped = '';
+            
+            for (let i = 0; i < parts.length; i++) {
+                if (parts[i].startsWith('<a ')) {
+                    // This is already a link, don't escape it
+                    escaped += parts[i];
+                } else {
+                    // Escape this part
+                    const div = document.createElement('div');
+                    div.textContent = parts[i];
+                    escaped += div.innerHTML;
+                }
+            }
+            
+            // Convert line breaks to <br> tags
+            escaped = escaped.replace(/\n/g, '<br>');
+            
+            // Convert **text** to bold (but avoid affecting links)
+            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert bullet points (•) to proper list items
+            escaped = escaped.replace(/^• (.+)$/gm, '<div class="bullet-point">• $1</div>');
+            
+            // Convert markdown-style headers (## text) to styled headers
+            escaped = escaped.replace(/^## (.+)$/gm, '<div class="message-header">$1</div>');
+            
+            // Convert sections with **Section:** pattern
+            escaped = escaped.replace(/\*\*([^:]+):\*\*/g, '<div class="section-header">$1:</div>');
+            
+            // Convert 🔗 emoji followed by **More Information:** pattern for better styling
+            escaped = escaped.replace(/🔗\s*\*\*([^*]+)\*\*/g, '<div class="source-link-container">🔗 <strong>$1</strong></div>');
+            
+            return escaped;
+        }
+
+        // Test the function
+        const testInput = '🔗 **More Information:** [Muscat Airport Transportation](https://www.muscatairport.co.om/en/content/to-from)';
+        const result = formatMessageContent(testInput);
+        
+        document.getElementById('output').innerHTML = result;
+        
+        // Check if link is clickable
+        const hasClickableLink = result.includes('<a href=') && result.includes('target="_blank"');
+        const resultDiv = document.getElementById('result');
+        
+        if (hasClickableLink) {
+            resultDiv.innerHTML = '<span style="color: green;">✅ SUCCESS: Link is clickable and opens in new tab!</span>';
+        } else {
+            resultDiv.innerHTML = '<span style="color: red;">❌ FAILED: Link is not clickable</span>';
+        }
+        
+        console.log('Test input:', testInput);
+        console.log('Processed output:', result);
+        console.log('Has clickable link:', hasClickableLink);
+    </script>
+</body>
+</html> 
