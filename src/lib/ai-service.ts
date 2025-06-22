@@ -380,9 +380,11 @@ The airport is well-signposted from the highway, and you'll see clear directiona
     const bestMatch = relevantEntries[0];
     
     if (bestMatch.relevance > 0.25) {  // Lowered threshold for better matching
-      // High confidence - use the knowledge base answer
+      // Generate response based on question type and specificity
+      const responseContent = this.generateTargetedResponse(query, bestMatch.entry, analysis);
+      
       return {
-        content: bestMatch.entry.answer,
+        content: responseContent,
         confidence: bestMatch.relevance,
         sources: [{
           title: `${bestMatch.entry.category} - ${bestMatch.entry.subcategory}`,
@@ -396,6 +398,222 @@ The airport is well-signposted from the highway, and you'll see clear directiona
       // Lower confidence - combine multiple sources or use fallback
       return this.generateCombinedResponse(relevantEntries, analysis);
     }
+  }
+
+  private generateTargetedResponse(query: string, entry: KnowledgeEntry, analysis: any): string {
+    const lowerQuery = query.toLowerCase();
+    const questionType = analysis.questionType;
+    
+    // Handle specific question patterns with concise responses
+    
+    // YES/NO Questions
+    if (questionType === 'yes_no' || lowerQuery.match(/^(is|are|do|does|can|will|would)/)) {
+      return this.generateYesNoResponse(lowerQuery, entry);
+    }
+    
+    // Availability Questions
+    if (lowerQuery.includes('available') || lowerQuery.includes('open') || lowerQuery.includes('operating')) {
+      return this.generateAvailabilityResponse(lowerQuery, entry);
+    }
+    
+    // Rate/Cost Questions  
+    if (lowerQuery.includes('cost') || lowerQuery.includes('rate') || lowerQuery.includes('price') || lowerQuery.includes('how much')) {
+      return this.generateRateResponse(lowerQuery, entry);
+    }
+    
+    // Location Questions
+    if (lowerQuery.includes('where') || lowerQuery.includes('location') || lowerQuery.includes('find')) {
+      return this.generateLocationResponse(lowerQuery, entry);
+    }
+    
+    // Time/Schedule Questions
+    if (lowerQuery.includes('when') || lowerQuery.includes('time') || lowerQuery.includes('schedule') || lowerQuery.includes('hours')) {
+      return this.generateTimeResponse(lowerQuery, entry);
+    }
+    
+    // How Questions (but not "how much")
+    if (lowerQuery.startsWith('how') && !lowerQuery.includes('much')) {
+      return this.generateHowResponse(lowerQuery, entry);
+    }
+    
+    // Which/What Questions (selection type)
+    if (lowerQuery.includes('which') || lowerQuery.includes('what') || questionType === 'selection') {
+      return this.generateSelectionResponse(lowerQuery, entry);
+    }
+    
+    // Default to full answer for complex queries
+    return entry.answer;
+  }
+
+  private generateYesNoResponse(query: string, entry: KnowledgeEntry): string {
+    const subcategory = entry.subcategory;
+    
+    if (query.includes('taxi') || subcategory === 'taxi') {
+      return `✅ **Yes, taxis are available at Muscat Airport.**
+
+• 24/7 service outside arrivals hall
+• Airport taxis, private taxis, and ride-hailing (Careem/Uber)
+• Rates: 4-12 OMR to city areas
+
+*Need more details about rates or booking?*`;
+    }
+    
+    if (query.includes('public transport') || query.includes('bus') || subcategory === 'public_transport') {
+      return `✅ **Yes, public transportation is available from Muscat Airport.**
+
+• Mwasalat buses to Ruwi and Seeb
+• Service: 6:00 AM - 10:00 PM (every 30-45 minutes)
+• Fare: 500 Baisa - 1 OMR
+
+*Would you like route details or schedules?*`;
+    }
+    
+    if (query.includes('car rental') || query.includes('rent') || subcategory === 'car_rental') {
+      return `✅ **Yes, car rental services are available at Muscat Airport.**
+
+• Multiple companies: Avis, Hertz, Budget, Europcar, Sixt
+• Located in arrivals hall
+• 24/7 service for major brands
+
+*Need information about specific companies or rates?*`;
+    }
+    
+    if (query.includes('park') || subcategory === 'parking') {
+      return `✅ **Yes, parking is available at Muscat Airport.**
+
+• Multiple parking areas (P1, P2, P3)
+• 24/7 availability with CCTV surveillance
+• Rates: First 30 minutes free, then 2-5 OMR per day
+
+*Want to know specific rates or locations?*`;
+    }
+    
+    return `✅ **Yes, ${subcategory.replace('_', ' ')} services are available at Muscat Airport.**\n\n*Ask for more specific details if needed.*`;
+  }
+
+  private generateAvailabilityResponse(query: string, entry: KnowledgeEntry): string {
+    if (entry.subcategory === 'taxi') {
+      return `🚕 **Taxi Availability:** 24/7 service available outside arrivals hall. No advance booking required.`;
+    }
+    
+    if (entry.subcategory === 'public_transport') {
+      return `🚌 **Public Transport Availability:** Mwasalat buses operate 6:00 AM - 10:00 PM, every 30-45 minutes.`;
+    }
+    
+    if (entry.subcategory === 'car_rental') {
+      return `🚗 **Car Rental Availability:** Major brands available 24/7 in arrivals hall. Local companies have varying hours.`;
+    }
+    
+    if (entry.subcategory === 'parking') {
+      return `🅿️ **Parking Availability:** 24/7 parking in multiple areas (P1, P2, P3) with real-time availability.`;
+    }
+    
+    return entry.answer.split('\n\n')[0]; // Return first section
+  }
+
+  private generateRateResponse(query: string, entry: KnowledgeEntry): string {
+    if (entry.subcategory === 'taxi') {
+      return `🚕 **Taxi Rates from Muscat Airport:**
+• To City Center: 8-12 OMR
+• To Seeb: 4-6 OMR  
+• To Nizwa: 25-30 OMR
+• To Sur: 35-40 OMR
+
+*All taxis use meters and accept credit cards.*`;
+    }
+    
+    if (entry.subcategory === 'public_transport') {
+      return `🚌 **Public Transport Rates:**
+• Mwasalat bus fare: 500 Baisa - 1 OMR
+• Hotel shuttles: Usually complimentary (check with hotel)`;
+    }
+    
+    if (entry.subcategory === 'parking') {
+      return `🅿️ **Parking Rates at Muscat Airport:**
+• First 30 minutes: Free
+• 1-2 hours: 2 OMR
+• 2-24 hours: 5 OMR per day
+• Long-term (P3): 3 OMR per day`;
+    }
+    
+    // Extract rate information from full answer
+    const rateSection = entry.answer.match(/\*\*Rates?:\*\*([\s\S]*?)(\*\*|$)/);
+    if (rateSection) {
+      return `💰 **Rates:**${rateSection[1].trim()}`;
+    }
+    
+    return entry.answer.split('\n\n')[1] || entry.answer; // Try to get rates section
+  }
+
+  private generateLocationResponse(query: string, entry: KnowledgeEntry): string {
+    if (entry.subcategory === 'taxi') {
+      return `📍 **Taxi Location:** Outside arrivals hall - clearly marked taxi stand area.`;
+    }
+    
+    if (entry.subcategory === 'public_transport') {
+      return `📍 **Bus Stop Location:** Outside arrivals hall, well-signposted Mwasalat bus stop.`;
+    }
+    
+    if (entry.subcategory === 'car_rental') {
+      return `📍 **Car Rental Location:** All major car rental desks are in the arrivals hall for easy access.`;
+    }
+    
+    if (entry.subcategory === 'parking') {
+      return `📍 **Parking Locations:**
+• P1: Short-term (closest to terminal)
+• P2: Medium-term parking  
+• P3: Long-term parking (most economical)`;
+    }
+    
+    return entry.answer.split('\n\n')[0]; // Return first section
+  }
+
+  private generateTimeResponse(query: string, entry: KnowledgeEntry): string {
+    if (entry.subcategory === 'taxi') {
+      return `⏰ **Taxi Operating Hours:** 24/7 service - taxis are always available at the airport.`;
+    }
+    
+    if (entry.subcategory === 'public_transport') {
+      return `⏰ **Bus Schedule:**
+• Operating Hours: 6:00 AM - 10:00 PM
+• Frequency: Every 30-45 minutes
+• Routes to Ruwi and Seeb`;
+    }
+    
+    if (entry.subcategory === 'car_rental') {
+      return `⏰ **Car Rental Hours:**
+• Major brands (Avis, Hertz, Budget): 24/7
+• Local companies: Varies (typically 8 AM - 10 PM)`;
+    }
+    
+    if (entry.subcategory === 'parking') {
+      return `⏰ **Parking Hours:** 24/7 availability with CCTV surveillance and security.`;
+    }
+    
+    return entry.answer.split('\n\n')[1] || entry.answer;
+  }
+
+  private generateHowResponse(query: string, entry: KnowledgeEntry): string {
+    if (query.includes('get to') || query.includes('reach')) {
+      return entry.answer; // Full directions
+    }
+    
+    // For other "how" questions, provide procedural information
+    return entry.answer.split('\n\n').slice(0, 2).join('\n\n'); // First two sections
+  }
+
+  private generateSelectionResponse(query: string, entry: KnowledgeEntry): string {
+    if (entry.subcategory === 'car_rental') {
+      return `🚗 **Car Rental Companies at Muscat Airport:**
+
+**International:** Avis, Hertz, Budget, Europcar, Sixt
+**Local:** Mark Rent a Car, Fast Rent a Car, United Car Rental
+
+*All located in arrivals hall. Major brands offer 24/7 service.*`;
+    }
+    
+    // For other selection questions, return the full answer
+    return entry.answer;
   }
 
   private generateFallbackResponse(analysis: any) {
