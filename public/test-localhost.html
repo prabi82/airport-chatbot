@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oman Airports Chatbot - Local Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .test-queries {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .query-example {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .query-example:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">Loading...</div>
+    
+    <div class="container">
+        <h1>✈️ Oman Airports AI Chatbot</h1>
+        <div class="info">
+            <h3>🚀 Local Development Test</h3>
+            <p>This page tests the chatbot widget running locally on your development server.</p>
+            <p><strong>Current URL:</strong> <span id="current-url"></span></p>
+            <p><strong>API URL:</strong> <span id="api-url"></span></p>
+        </div>
+
+        <div class="test-queries">
+            <h3>🧪 Test These Queries:</h3>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                How do I reach the airport from Burj Al Sahwa roundabout?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                Is public transportation available from Muscat Airport?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                What are the parking rates at Muscat Airport?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                Are taxis available 24/7 at the airport?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                Which car rental companies are available?
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Display current URL info
+        document.getElementById('current-url').textContent = window.location.href;
+        
+        // Auto-detect the correct API URL based on current page
+        const currentOrigin = window.location.origin;
+        const apiUrl = `${currentOrigin}/api`;
+        document.getElementById('api-url').textContent = apiUrl;
+        
+        // Initialize the chatbot widget with the correct API URL
+        window.omanairportsChatConfig = {
+            apiUrl: apiUrl,
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right',
+            autoOpen: false,
+            welcomeMessage: 'Welcome to Oman Airports! 🛫'
+        };
+
+        // Load the widget script
+        const script = document.createElement('script');
+        script.src = '/widget/chat-widget.js';
+        script.onload = function() {
+            document.getElementById('status').textContent = '✅ Widget Loaded Successfully';
+            document.getElementById('status').style.background = 'rgba(0,128,0,0.8)';
+            console.log('✅ Chat widget loaded successfully');
+        };
+        script.onerror = function() {
+            document.getElementById('status').textContent = '❌ Widget Failed to Load';
+            document.getElementById('status').style.background = 'rgba(128,0,0,0.8)';
+            console.error('❌ Failed to load chat widget');
+        };
+        document.head.appendChild(script);
+
+        // Function to test queries by opening chat and pre-filling
+        function testQuery(query) {
+            // Wait a bit for widget to be ready
+            setTimeout(() => {
+                // Try to open the chat widget
+                const chatButton = document.getElementById('omanairports-chat-button');
+                if (chatButton) {
+                    chatButton.click();
+                    
+                    // Pre-fill the input with the test query
+                    setTimeout(() => {
+                        const input = document.getElementById('chat-widget-input');
+                        if (input) {
+                            input.value = query;
+                            input.focus();
+                        }
+                    }, 500);
+                } else {
+                    alert('Chat widget not found. Please check the console for errors.');
+                }
+            }, 100);
+        }
+
+        // Add some debugging info
+        console.log('🔧 Test page loaded');
+        console.log('📍 Current origin:', currentOrigin);
+        console.log('🔗 API URL:', apiUrl);
+    </script>
+</body>
+</html>
