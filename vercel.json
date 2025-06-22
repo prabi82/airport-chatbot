@@ -6,6 +6,6 @@
       "maxDuration": 30
     }
   },
-  "buildCommand": "npm run build",
-  "installCommand": "npm install && npx prisma generate"
+  "buildCommand": "prisma generate && next build",
+  "installCommand": "npm install"
 } 
