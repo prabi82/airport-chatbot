@@ -12,7 +12,16 @@ const nextConfig: NextConfig = {
   
   // Enable experimental features for better performance
   experimental: {
-    optimizePackageImports: ['@prisma/client']
+    optimizePackageImports: ['@prisma/client'],
+    serverComponentsExternalPackages: ['@prisma/client']
+  },
+  
+  // Webpack configuration for Prisma
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push('@prisma/client');
+    }
+    return config;
   },
   
   // Environment variables
