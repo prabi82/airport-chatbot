@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oman Airports AI Chatbot - Production Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .info {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .test-queries {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: left;
+            backdrop-filter: blur(10px);
+        }
+        .query-example {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid #4CAF50;
+        }
+        .query-example:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateX(5px);
+        }
+        .status {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .features {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .feature-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .ai-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">Loading...</div>
+    
+    <div class="container">
+        <h1>✈️ Oman Airports AI Chatbot</h1>
+        <div class="ai-badge">🧠 AI-Powered Semantic Analysis</div>
+        
+        <div class="info">
+            <h3>🚀 Production Deployment - Version 2.0</h3>
+            <p><strong>Live URL:</strong> <span id="current-url"></span></p>
+            <p><strong>API Endpoint:</strong> <span id="api-url"></span></p>
+            <p><strong>Database:</strong> Connected to Neon PostgreSQL</p>
+            <p><strong>AI Engine:</strong> Semantic Analysis with Intent Recognition</p>
+        </div>
+
+        <div class="features">
+            <h3>🎯 New AI Features</h3>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h4>🧠 Semantic Analysis</h4>
+                    <p>Understands meaning, not just keywords</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🎯 Intent Recognition</h4>
+                    <p>Identifies what you're really asking</p>
+                </div>
+                <div class="feature-item">
+                    <h4>📊 Confidence Scoring</h4>
+                    <p>Provides accuracy ratings for responses</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🔄 Smart Fallbacks</h4>
+                    <p>Intelligent responses when unsure</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-queries">
+            <h3>🧪 Test AI Intelligence - Multiple Ways to Ask:</h3>
+            
+            <h4>🚗 Car Rental Queries:</h4>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                Which car rental companies are available?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                What car rental options do I have at the airport?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                I need to rent a vehicle, what companies are there?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                Car hire services available at Muscat airport?
+            </div>
+            
+            <h4>🚌 Transportation Queries:</h4>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                Is public transportation available from Muscat Airport?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                How can I get to the city using public transport?
+            </div>
+            
+            <h4>🗺️ Direction Queries:</h4>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                How do I reach the airport from Burj Al Sahwa roundabout?
+            </div>
+            
+            <h4>🅿️ Other Services:</h4>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                What are the parking rates at Muscat Airport?
+            </div>
+            <div class="query-example" onclick="testQuery(this.textContent)">
+                Are taxis available 24/7 at the airport?
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Display current URL info
+        document.getElementById('current-url').textContent = window.location.href;
+        
+        // Production API URL
+        const apiUrl = `${window.location.origin}/api`;
+        document.getElementById('api-url').textContent = apiUrl;
+        
+        // Initialize the chatbot widget with production settings
+        window.omanairportsChatConfig = {
+            apiUrl: apiUrl,
+            theme: 'light',
+            language: 'en',
+            position: 'bottom-right',
+            autoOpen: false,
+            welcomeMessage: 'Welcome to Oman Airports AI Assistant! 🤖'
+        };
+
+        // Load the widget script
+        const script = document.createElement('script');
+        script.src = '/widget/chat-widget.js';
+        script.onload = function() {
+            document.getElementById('status').textContent = '✅ AI Widget Loaded Successfully';
+            document.getElementById('status').style.background = 'rgba(76, 175, 80, 0.9)';
+            console.log('✅ AI-powered chat widget loaded successfully');
+            
+            // Test API connectivity
+            testAPIConnectivity();
+        };
+        script.onerror = function() {
+            document.getElementById('status').textContent = '❌ Widget Failed to Load';
+            document.getElementById('status').style.background = 'rgba(244, 67, 54, 0.9)';
+            console.error('❌ Failed to load chat widget');
+        };
+        document.head.appendChild(script);
+
+        // Function to test API connectivity
+        async function testAPIConnectivity() {
+            try {
+                const response = await fetch(`${apiUrl}/chat/send`, {
+                    method: 'GET'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('🔗 API Status:', data);
+                    document.getElementById('status').textContent = '🚀 AI System Ready - Database Connected';
+                    document.getElementById('status').style.background = 'rgba(76, 175, 80, 0.9)';
+                } else {
+                    throw new Error('API not responding correctly');
+                }
+            } catch (error) {
+                console.warn('⚠️ API connectivity issue:', error);
+                document.getElementById('status').textContent = '⚠️ Widget Loaded - API Check Failed';
+                document.getElementById('status').style.background = 'rgba(255, 152, 0, 0.9)';
+            }
+        }
+
+        // Function to test queries by opening chat and pre-filling
+        function testQuery(query) {
+            console.log(`🧪 Testing query: "${query}"`);
+            
+            // Wait a bit for widget to be ready
+            setTimeout(() => {
+                // Try to open the chat widget
+                const chatButton = document.getElementById('omanairports-chat-button');
+                if (chatButton) {
+                    chatButton.click();
+                    
+                    // Pre-fill the input with the test query
+                    setTimeout(() => {
+                        const input = document.getElementById('chat-widget-input');
+                        if (input) {
+                            input.value = query;
+                            input.focus();
+                            
+                            // Show instructions
+                            console.log('💡 Press Enter to send the query and test AI analysis');
+                        }
+                    }, 500);
+                } else {
+                    alert('Chat widget not found. Please check the console for errors.');
+                }
+            }, 100);
+        }
+
+        // Add debugging info
+        console.log('🔧 Production test page loaded');
+        console.log('📍 Current URL:', window.location.href);
+        console.log('🔗 API URL:', apiUrl);
+        console.log('🧠 Features: Semantic Analysis, Intent Recognition, Database Integration');
+    </script>
+</body>
+</html> 
