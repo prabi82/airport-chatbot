@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/database';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,8 +28,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Processing message: "${message}" for session: ${sessionId}`);
 
-    // Direct query processing without database dependencies
-    const response = await processQueryDirectly(message);
+    // Process query with database and fallback
+    const response = await processQueryWithDatabase(message, sessionId);
 
     console.log(`✅ Response generated successfully`);
 
@@ -59,6 +60,134 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function processQueryWithDatabase(query: string, sessionId: string) {
+  const startTime = Date.now();
+  let usedDatabase = false;
+  
+  try {
+    // Try to get or create session
+    const session = await getOrCreateSession(sessionId);
+    
+    // Search knowledge base first
+    const knowledgeMatch = await searchKnowledgeBase(query);
+    if (knowledgeMatch) {
+      usedDatabase = true;
+      
+      // Save to database
+      await saveMessage(sessionId, query, knowledgeMatch.answer, 'knowledge_base', Date.now() - startTime, true);
+      
+      return {
+        content: knowledgeMatch.answer,
+        confidence: knowledgeMatch.confidence,
+        sources: [{ title: `Knowledge Base - ${knowledgeMatch.category}`, url: 'https://www.muscatairport.co.om', relevance: 0.9 }],
+        intent: knowledgeMatch.category,
+        suggestedActions: ['ask_more', 'contact_support'],
+        responseTime: Date.now() - startTime
+      };
+    }
+  } catch (error) {
+    console.warn('Database operation failed, using fallback:', error);
+  }
+  
+  // Fallback to static processing
+  const staticResponse = await processQueryDirectly(query);
+  
+  // Try to save to database (non-blocking)
+  try {
+    if (!usedDatabase) {
+      await saveMessage(sessionId, query, staticResponse.content, staticResponse.intent, Date.now() - startTime, true);
+    }
+  } catch (error) {
+    console.warn('Failed to save message to database:', error);
+  }
+  
+  return staticResponse;
+}
+
+async function getOrCreateSession(sessionId: string) {
+  try {
+    return await prisma.chatSession.upsert({
+      where: { sessionId },
+      update: { updatedAt: new Date() },
+      create: {
+        sessionId,
+        userAgent: 'Web Browser',
+        ipAddress: '0.0.0.0',
+        language: 'en'
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to create/update session:', error);
+    return null;
+  }
+}
+
+async function searchKnowledgeBase(query: string) {
+  try {
+    const lowerQuery = query.toLowerCase();
+    
+    const entries = await prisma.knowledgeBase.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { question: { contains: lowerQuery, mode: 'insensitive' } },
+          { answer: { contains: lowerQuery, mode: 'insensitive' } },
+          { keywords: { hasSome: lowerQuery.split(' ') } }
+        ]
+      },
+      orderBy: { priority: 'desc' },
+      take: 1
+    });
+
+    if (entries.length === 0) return null;
+    
+    const entry = entries[0];
+    return {
+      answer: entry.answer,
+      category: entry.category,
+      confidence: calculateConfidence(query, entry)
+    };
+  } catch (error) {
+    console.warn('Knowledge base search failed:', error);
+    return null;
+  }
+}
+
+function calculateConfidence(query: string, entry: any): number {
+  const lowerQuery = query.toLowerCase();
+  const lowerQuestion = entry.question.toLowerCase();
+  
+  let confidence = 0;
+  
+  if (lowerQuestion.includes(lowerQuery)) confidence += 0.5;
+  
+  const queryWords = lowerQuery.split(' ');
+  const matchingKeywords = entry.keywords.filter((keyword: string) => 
+    queryWords.some(word => keyword.toLowerCase().includes(word))
+  );
+  confidence += (matchingKeywords.length / entry.keywords.length) * 0.3;
+  
+  return Math.min(confidence, 1);
+}
+
+async function saveMessage(sessionId: string, message: string, response: string, queryType: string, processingTime: number, isSuccessful: boolean) {
+  try {
+    await prisma.chatMessage.create({
+      data: {
+        sessionId,
+        message,
+        response,
+        queryType,
+        processingTime,
+        isSuccessful
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to save message:', error);
+  }
+}
+
+// Keep the existing static processing as fallback
 async function processQueryDirectly(query: string) {
   const startTime = Date.now();
   const lowerQuery = query.toLowerCase();
@@ -188,52 +317,21 @@ The airport is well-signposted from the highway, and you'll see clear directiona
     };
   }
   
-  // Taxi queries
-  if (lowerQuery.includes('taxi') || lowerQuery.includes('cab')) {
-    return {
-      content: `🚕 **Taxi Services at Muscat Airport:**
-
-**Availability:**
-- 24/7 taxi service from arrivals hall
-- Official airport taxis with meters
-- No advance booking required
-
-**Rates:**
-- Metered fares starting at 500 Baisa
-- To Muscat City Center: 8-12 OMR
-- To Seeb: 4-6 OMR
-- Night surcharge may apply (10 PM - 6 AM)
-
-**Ride-Hailing Apps:**
-- Careem available
-- Uber available
-- App-based pricing
-
-**Taxi Stand Location:**
-- Outside arrivals hall
-- Clear signage and queue system
-- Staff assistance available`,
-      confidence: 0.9,
-      sources: [{ title: 'Muscat Airport Taxi', url: 'https://www.muscatairport.co.om', relevance: 0.9 }],
-      intent: 'taxi',
-      suggestedActions: ['book_taxi', 'check_rates', 'download_app'],
-      responseTime: Date.now() - startTime
-    };
-  }
-  
-  // Greeting
+  // Greeting queries
   if (lowerQuery.includes('hello') || lowerQuery.includes('hi') || lowerQuery.includes('hey')) {
     return {
-      content: `👋 Welcome to Oman Airports! I'm here to help you with information about Muscat International Airport.
+      content: `👋 **Welcome to Oman Airports!**
 
-I can assist you with:
+I'm here to help you with information about Muscat International Airport.
+
+**I can assist you with:**
 🛫 Flight information and schedules
 🚗 Transportation options (taxis, buses, parking)
 🏢 Airport facilities and services
 🗺️ Directions to and from the airport
 🎫 General airport information
 
-How can I help you today?`,
+**How can I help you today?**`,
       confidence: 0.9,
       sources: [{ title: 'Oman Airports Assistant', url: 'https://www.omanairports.co.om', relevance: 0.9 }],
       intent: 'greeting',
@@ -264,12 +362,7 @@ I can help you with information about:
 - Check-in procedures
 - Security information
 
-**🛫 Flight Information:**
-- Flight schedules and status
-- Gate information
-- Arrival and departure times
-
-What specific information would you like to know about Muscat Airport?`,
+**What specific information would you like to know about Muscat Airport?**`,
     confidence: 0.7,
     sources: [{ title: 'Muscat Airport Guide', url: 'https://www.muscatairport.co.om', relevance: 0.8 }],
     intent: 'general',
@@ -278,24 +371,14 @@ What specific information would you like to know about Muscat Airport?`,
   };
 }
 
-// Handle unsupported methods
 export async function GET() {
-  return NextResponse.json(
-    { error: 'Method not allowed. Use POST.' },
-    { status: 405 }
-  );
+  return NextResponse.json({ message: 'Chat API is running' });
 }
 
 export async function PUT() {
-  return NextResponse.json(
-    { error: 'Method not allowed. Use POST.' },
-    { status: 405 }
-  );
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 }
 
 export async function DELETE() {
-  return NextResponse.json(
-    { error: 'Method not allowed. Use POST.' },
-    { status: 405 }
-  );
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 } 

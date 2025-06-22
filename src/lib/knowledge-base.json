@@ -1,0 +1,221 @@
+{
+  "airport_info": {
+    "general": {
+      "name": "Muscat International Airport",
+      "code": "MCT",
+      "location": "Seeb, Muscat, Oman",
+      "opened": "2018",
+      "website": "https://www.muscatairport.co.om"
+    },
+    "contact": {
+      "phone": "+968 24 519 223",
+      "email": "info@muscatairport.co.om",
+      "emergency": "999"
+    }
+  },
+  "transportation": {
+    "directions": {
+      "from_city_center": {
+        "distance": "32 km",
+        "time": "35-45 minutes",
+        "route": "Sultan Qaboos Highway (Highway 1) towards Seeb",
+        "description": "Take Sultan Qaboos Highway (Highway 1) towards Seeb. The airport is clearly signposted from the highway."
+      },
+      "from_seeb": {
+        "distance": "15 km",
+        "time": "15-20 minutes",
+        "route": "Sultan Qaboos Highway (Highway 1) eastbound",
+        "description": "Take Sultan Qaboos Highway (Highway 1) eastbound. Look for Muscat International Airport signs."
+      },
+      "from_burj_al_sahwa": {
+        "distance": "12-15 km",
+        "time": "15-20 minutes",
+        "route": "Sultan Qaboos Highway (Highway 1) eastbound towards Seeb",
+        "detailed_directions": [
+          "From Burj Al Sahwa roundabout, head northeast toward Sultan Qaboos Highway",
+          "Merge onto Sultan Qaboos Highway (Highway 1) heading towards Seeb",
+          "Continue on Highway 1 for approximately 12 km",
+          "Take the exit for Muscat International Airport (clearly signposted)",
+          "Follow the airport access road to the terminal building"
+        ]
+      }
+    },
+    "parking": {
+      "areas": {
+        "P1": {
+          "type": "Short-term",
+          "location": "Closest to terminal",
+          "features": ["Covered parking", "Easy terminal access"]
+        },
+        "P2": {
+          "type": "Medium-term",
+          "location": "Second closest",
+          "features": ["Covered and open parking"]
+        },
+        "P3": {
+          "type": "Long-term",
+          "location": "Most economical",
+          "features": ["Budget-friendly", "Shuttle service"]
+        }
+      },
+      "rates": {
+        "first_30_minutes": "Free",
+        "1_to_2_hours": "2 OMR",
+        "2_to_24_hours": "5 OMR per day",
+        "long_term_p3": "3 OMR per day"
+      },
+      "payment_methods": ["Cash (OMR)", "Credit cards", "Debit cards"],
+      "features": ["24/7 availability", "CCTV surveillance", "Payment machines"]
+    },
+    "public_transport": {
+      "mwasalat_buses": {
+        "routes": [
+          {
+            "name": "Route 1",
+            "destination": "Airport ↔ Ruwi (City Center)",
+            "frequency": "Every 30-45 minutes"
+          },
+          {
+            "name": "Route 2", 
+            "destination": "Airport ↔ Seeb",
+            "frequency": "Every 30-45 minutes"
+          }
+        ],
+        "operating_hours": "6:00 AM - 10:00 PM",
+        "fare_range": "500 Baisa - 1 OMR",
+        "bus_stop": "Outside arrivals hall",
+        "features": ["English and Arabic signage", "Ticket machines", "Staff assistance"]
+      },
+      "hotel_shuttles": {
+        "availability": "Many hotels provide complimentary shuttle services",
+        "booking": "Advance booking required (24-48 hours)",
+        "contact": "Contact your hotel directly for schedules"
+      }
+    },
+    "taxis": {
+      "availability": "24/7 from arrivals hall",
+      "type": "Official airport taxis with meters",
+      "booking": "No advance booking required",
+      "rates": {
+        "base_fare": "500 Baisa",
+        "to_city_center": "8-12 OMR",
+        "to_seeb": "4-6 OMR",
+        "night_surcharge": "10 PM - 6 AM"
+      },
+      "ride_hailing": ["Careem", "Uber"],
+      "location": "Outside arrivals hall with clear signage"
+    },
+    "car_rental": {
+      "availability": "24/7 services available",
+      "companies": ["Avis", "Hertz", "Budget", "Europcar", "Sixt"],
+      "location": "Arrivals hall",
+      "requirements": ["Valid driving license", "Credit card", "Passport"]
+    }
+  },
+  "facilities": {
+    "dining": {
+      "restaurants": [
+        "Al Angham Restaurant",
+        "Starbucks",
+        "Costa Coffee",
+        "Burger King",
+        "Subway"
+      ],
+      "food_courts": "Multiple food courts available",
+      "operating_hours": "Most restaurants open 24/7"
+    },
+    "shopping": {
+      "duty_free": "Oman Duty Free",
+      "shops": [
+        "Souvenirs and gifts",
+        "Electronics",
+        "Perfumes and cosmetics",
+        "Local handicrafts",
+        "Books and magazines"
+      ],
+      "operating_hours": "Most shops open during flight operations"
+    },
+    "services": {
+      "wifi": {
+        "availability": "Free WiFi throughout the airport",
+        "network": "MCT_Free_WiFi",
+        "time_limit": "Unlimited"
+      },
+      "charging": "Charging stations available throughout terminal",
+      "currency_exchange": "Multiple currency exchange counters",
+      "atm": "ATM machines available",
+      "lost_and_found": "Located in arrivals hall"
+    },
+    "lounges": {
+      "oman_air_lounge": {
+        "location": "Departure level",
+        "access": "Oman Air business class passengers and elite members",
+        "facilities": ["Food and beverages", "WiFi", "Comfortable seating", "Shower facilities"]
+      },
+      "plaza_premium_lounge": {
+        "location": "Departure level",
+        "access": "Pay-per-use or membership",
+        "facilities": ["Food and beverages", "WiFi", "Quiet environment", "Business facilities"]
+      }
+    },
+    "prayer_facilities": {
+      "location": "Multiple prayer rooms throughout the airport",
+      "features": ["Separate facilities for men and women", "Ablution facilities", "Qibla direction marked"]
+    },
+    "medical": {
+      "clinic": "Medical clinic available",
+      "pharmacy": "Pharmacy in terminal",
+      "emergency": "Emergency services available 24/7"
+    }
+  },
+  "faq_patterns": {
+    "directions": [
+      "how to get to airport",
+      "directions to airport",
+      "route to airport",
+      "drive to airport",
+      "from burj al sahwa",
+      "from city center",
+      "from seeb",
+      "highway to airport"
+    ],
+    "parking": [
+      "parking rates",
+      "parking cost",
+      "where to park",
+      "parking areas",
+      "p1 p2 p3",
+      "parking payment",
+      "parking hours"
+    ],
+    "public_transport": [
+      "public transport",
+      "bus to airport",
+      "shuttle bus",
+      "mwasalat",
+      "public bus",
+      "bus schedule"
+    ],
+    "taxi": [
+      "taxi from airport",
+      "taxi cost",
+      "taxi fare",
+      "uber",
+      "careem",
+      "taxi available"
+    ],
+    "facilities": [
+      "restaurants",
+      "food",
+      "dining",
+      "shops",
+      "shopping",
+      "wifi",
+      "internet",
+      "charging",
+      "lounge",
+      "prayer",
+      "medical"
+    ]
+  }
+} 
