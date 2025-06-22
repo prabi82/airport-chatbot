@@ -5,7 +5,5 @@
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }
-  },
-  "buildCommand": "prisma generate && next build",
-  "installCommand": "npm install"
+  }
 } 
