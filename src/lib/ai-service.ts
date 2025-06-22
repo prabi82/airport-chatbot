@@ -245,30 +245,42 @@ The airport is well-signposted from the highway, and you'll see clear directiona
       questionType = 'selection';
     }
 
-    // Intent classification with better synonym detection
-    if (lowerQuery.includes('direction') || lowerQuery.includes('how to get') || lowerQuery.includes('route') || lowerQuery.includes('reach') || lowerQuery.includes('way to') || lowerQuery.includes('navigate')) {
-      intent = 'directions';
-      concepts.push('navigation', 'route', 'travel');
-    }
-    
-    if (lowerQuery.includes('transport') || lowerQuery.includes('bus') || lowerQuery.includes('shuttle') || lowerQuery.includes('public bus') || lowerQuery.includes('mwasalat')) {
-      intent = 'public_transport';
-      concepts.push('transportation', 'public', 'bus', 'shuttle');
-    }
-    
-    if (lowerQuery.includes('car rental') || lowerQuery.includes('rent') || lowerQuery.includes('rental') || lowerQuery.includes('hire') || lowerQuery.includes('companies') || lowerQuery.includes('available')) {
-      intent = 'car_rental';
-      concepts.push('rental', 'car', 'vehicle', 'hire', 'companies');
-    }
-    
-    if (lowerQuery.includes('taxi') || lowerQuery.includes('cab') || lowerQuery.includes('ride') || lowerQuery.includes('careem') || lowerQuery.includes('uber')) {
+    // Intent classification with better synonym detection and priority ordering
+    // Check for specific transportation types first (highest priority)
+    if (lowerQuery.includes('taxi') || lowerQuery.includes('cab') || lowerQuery.includes('careem') || lowerQuery.includes('uber')) {
       intent = 'taxi';
       concepts.push('taxi', 'cab', 'ride', 'transport');
     }
-    
-    if (lowerQuery.includes('park') || lowerQuery.includes('parking') || lowerQuery.includes('rates') || lowerQuery.includes('cost')) {
+    else if (lowerQuery.includes('car rental') || lowerQuery.includes('rent a car') || lowerQuery.includes('rental') || lowerQuery.includes('hire') || 
+             (lowerQuery.includes('rent') && lowerQuery.includes('car')) || 
+             (lowerQuery.includes('companies') && (lowerQuery.includes('car') || lowerQuery.includes('rental')))) {
+      intent = 'car_rental';
+      concepts.push('rental', 'car', 'vehicle', 'hire', 'companies');
+    }
+    else if (lowerQuery.includes('public transport') || lowerQuery.includes('bus') || lowerQuery.includes('shuttle') || 
+             lowerQuery.includes('public bus') || lowerQuery.includes('mwasalat') || lowerQuery.includes('transportation')) {
+      intent = 'public_transport';
+      concepts.push('transportation', 'public', 'bus', 'shuttle');
+    }
+    else if (lowerQuery.includes('direction') || lowerQuery.includes('how to get') || lowerQuery.includes('route') || 
+             lowerQuery.includes('reach') || lowerQuery.includes('way to') || lowerQuery.includes('navigate')) {
+      intent = 'directions';
+      concepts.push('navigation', 'route', 'travel');
+    }
+    else if (lowerQuery.includes('park') || lowerQuery.includes('parking')) {
       intent = 'parking';
       concepts.push('parking', 'car', 'fees', 'rates');
+    }
+    // Fallback for cost/rate questions without specific context
+    else if (lowerQuery.includes('cost') || lowerQuery.includes('rate') || lowerQuery.includes('price') || lowerQuery.includes('how much')) {
+      // Try to infer from context
+      if (lowerQuery.includes('city') || lowerQuery.includes('center') || lowerQuery.includes('downtown')) {
+        intent = 'taxi'; // Most likely asking about taxi rates to city
+        concepts.push('taxi', 'rates', 'cost');
+      } else {
+        intent = 'general'; // Keep as general for better matching
+        concepts.push('cost', 'rates', 'price');
+      }
     }
 
     // Extract location/landmark references
