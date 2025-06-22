@@ -10,20 +10,6 @@ const nextConfig: NextConfig = {
     unoptimized: false,
   },
   
-  // Enable experimental features for better performance
-  experimental: {
-    optimizePackageImports: ['@prisma/client'],
-    serverComponentsExternalPackages: ['@prisma/client']
-  },
-  
-  // Webpack configuration for Prisma
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('@prisma/client');
-    }
-    return config;
-  },
-  
   // Environment variables
   env: {
     DATABASE_URL: process.env.DATABASE_URL,
