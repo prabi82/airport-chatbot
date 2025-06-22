@@ -12,8 +12,7 @@ const nextConfig: NextConfig = {
   
   // Enable experimental features for better performance
   experimental: {
-    optimizePackageImports: ['@prisma/client'],
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma']
+    optimizePackageImports: ['@prisma/client']
   },
   
   // Environment variables
@@ -41,20 +40,7 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
-  },
-
-  webpack: (config: any, { isServer }: { isServer: boolean }) => {
-    if (isServer) {
-      config.externals.push({
-        '@prisma/client': '@prisma/client',
-        'prisma': 'prisma'
-      });
-    }
-    return config;
-  },
-
-  // Ensure Prisma files are included in the deployment
-  outputFileTracing: true,
+  }
 };
 
 export default nextConfig;

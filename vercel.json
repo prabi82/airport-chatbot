@@ -5,10 +5,5 @@
     "src/app/api/**/*.ts": {
       "maxDuration": 30
     }
-  },
-  "buildCommand": "npx prisma generate && npm run build",
-  "installCommand": "npm ci && npx prisma generate",
-  "env": {
-    "PRISMA_CLI_BINARY_TARGETS": "rhel-openssl-3.0.x,rhel-openssl-1.0.x,linux-musl,debian-openssl-1.1.x,debian-openssl-3.0.x"
   }
 } 
