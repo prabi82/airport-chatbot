@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 import { aiService } from '@/lib/ai-service';
+import { agentService } from '@/lib/agent-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,28 +30,71 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Processing message: "${message}" for session: ${sessionId}`);
 
-    // Use AI service for semantic analysis and response generation
-    const aiResponse = await aiService.processQuery(message, sessionId);
+    // Check for explicit handoff requests
+    const handoffKeywords = [
+      'speak to human', 'talk to human', 'human agent', 'customer service',
+      'representative', 'supervisor', 'manager', 'complaint', 'escalate',
+      'not satisfied', 'unhappy', 'frustrated', 'this is not working',
+      'need help', 'complex issue', 'urgent matter'
+    ];
+
+    const needsHandoff = handoffKeywords.some(keyword => 
+      message.toLowerCase().includes(keyword.toLowerCase())
+    );
+
+    // Use AI service for response generation
+    const aiResponse = await aiService.generateResponse(message, '', sessionId);
+
+    // Determine if human assistance is needed (using success as confidence indicator)
+    const confidence = aiResponse.success ? 0.8 : 0.3;
+    const requiresHuman = confidence < 0.5 || needsHandoff;
+
+    // Auto-request handoff if needed
+    let handoffId = null;
+    if (requiresHuman && needsHandoff) {
+      console.log('🤝 Auto-requesting handoff for session:', sessionId);
+      handoffId = await agentService.requestHandoff({
+        sessionId,
+        reason: needsHandoff ? 'Customer explicitly requested human assistance' : 'Low AI confidence response',
+        priority: needsHandoff ? 'high' : 'normal',
+        context: {
+          lastMessage: message,
+          aiConfidence: confidence,
+          explicitRequest: needsHandoff
+        }
+      });
+    }
 
     // Save the interaction to database (non-blocking)
     try {
-      await saveMessage(sessionId, message, aiResponse.content, aiResponse.intent, aiResponse.responseTime, true);
+      await saveMessage(sessionId, message, aiResponse.message, 'general', aiResponse.processingTime, aiResponse.success);
     } catch (error) {
       console.warn('Failed to save message to database:', error);
     }
 
-    console.log(`✅ AI response generated with ${(aiResponse.confidence * 100).toFixed(1)}% confidence`);
+    console.log(`✅ AI response generated with ${(confidence * 100).toFixed(1)}% confidence using ${aiResponse.provider}`);
+
+    // Enhanced response with handoff information
+    let responseContent = aiResponse.message;
+    if (handoffId) {
+      responseContent += '\n\n🤝 **I\'ve connected you with our human support team. An agent will be with you shortly to assist with your request.**';
+    } else if (requiresHuman) {
+      responseContent += '\n\n💬 *If you need further assistance, I can connect you with a human agent. Just say "I need human help".*';
+    }
 
     // Return successful response
     return NextResponse.json({
       success: true,
-      response: aiResponse.content,
-      confidence: aiResponse.confidence,
-      sources: aiResponse.sources,
-      intent: aiResponse.intent,
-      requiresHuman: aiResponse.confidence < 0.5, // Suggest human help for low confidence
-      suggestedActions: aiResponse.suggestedActions,
-      responseTime: aiResponse.responseTime
+      response: responseContent,
+      confidence: confidence,
+      sources: [], // AI service doesn't provide sources currently
+      intent: 'general', // Simplified intent detection
+      requiresHuman,
+      handoffRequested: !!handoffId,
+      handoffId,
+      suggestedActions: [], // AI service doesn't provide suggested actions currently
+      responseTime: aiResponse.processingTime,
+      provider: aiResponse.provider
     });
 
   } catch (error) {

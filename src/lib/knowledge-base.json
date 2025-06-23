@@ -59,10 +59,11 @@
         }
       },
       "rates": {
-        "first_30_minutes": "Free",
-        "1_to_2_hours": "2 OMR",
-        "2_to_24_hours": "5 OMR per day",
-        "long_term_p3": "3 OMR per day"
+        "30_minutes": "OMR 0.600",
+        "1_hour": "OMR 1.100",
+        "2_hours": "OMR 2.100",
+        "3_hours": "OMR 3.200",
+        "long_term_p3": "OMR 3.000 per day"
       },
       "payment_methods": ["Cash (OMR)", "Credit cards", "Debit cards"],
       "features": ["24/7 availability", "CCTV surveillance", "Payment machines"]

@@ -127,11 +127,12 @@ The airport is well-signposted from the highway, and you'll see clear directiona
 - **P2**: Medium-term parking
 - **P3**: Long-term parking (most economical)
 
-**Rates:**
-- **First 30 minutes**: Free
-- **1-2 hours**: 2 OMR
-- **2-24 hours**: 5 OMR per day
-- **Long-term**: 3 OMR per day (P3 area)
+**Current Rates:**
+- **30 minutes**: OMR 0.600
+- **1 hour**: OMR 1.100
+- **2 hours**: OMR 2.100
+- **3 hours**: OMR 3.200
+- **Long-term (P3)**: OMR 3.000 per day
 
 **Payment Methods:**
 - Cash (OMR)

@@ -18,10 +18,14 @@ model ChatSession {
   userAgent   String?
   ipAddress   String?
   language    String   @default("en")
+  needsHuman  Boolean  @default(false) // Flag for human assistance
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
   messages    ChatMessage[]
+  handoffs    ChatHandoff[]
+  agentChats  AgentChat[]
   
   @@map("chat_sessions")
 }
@@ -48,6 +52,7 @@ model KnowledgeBase {
   question    String
   answer      String
   keywords    String[]
+  sourceUrl   String?  // URL where this knowledge was scraped from
   priority    Int      @default(1)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -83,19 +88,100 @@ model SupportAgent {
   id          String   @id @default(cuid())
   name        String
   email       String   @unique
+  password    String   // Hashed password
+  role        String   @default("agent") // agent, supervisor, admin
+  skills      String[] // Areas of expertise
   isActive    Boolean  @default(true)
+  isOnline    Boolean  @default(false)
+  maxChats    Int      @default(5) // Maximum concurrent chats
+  currentChats Int     @default(0) // Current active chats
   lastLogin   DateTime?
+  lastActivity DateTime?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  handoffs    ChatHandoff[]
+  agentChats  AgentChat[]
+  agentNotes  AgentNote[]
   
   @@map("support_agents")
+}
+
+model ChatHandoff {
+  id          String   @id @default(cuid())
+  sessionId   String
+  agentId     String?
+  reason      String   // Why handoff was requested
+  priority    String   @default("normal") // low, normal, high, urgent
+  status      String   @default("pending") // pending, assigned, in_progress, completed, cancelled
+  context     Json?    // Chat context and history
+  waitTime    Int?     // Time waited before assignment (seconds)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  session     ChatSession @relation(fields: [sessionId], references: [sessionId])
+  agent       SupportAgent? @relation(fields: [agentId], references: [id])
+  
+  @@map("chat_handoffs")
+}
+
+model AgentChat {
+  id          String   @id @default(cuid())
+  sessionId   String
+  agentId     String
+  status      String   @default("active") // active, on_hold, completed
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  duration    Int?     // Duration in seconds
+  satisfaction Int?    // 1-5 rating
+  notes       String?
+  
+  // Relations
+  session     ChatSession @relation(fields: [sessionId], references: [sessionId])
+  agent       SupportAgent @relation(fields: [agentId], references: [id])
+  
+  @@map("agent_chats")
+}
+
+model AgentNote {
+  id          String   @id @default(cuid())
+  sessionId   String
+  agentId     String
+  note        String
+  isInternal  Boolean  @default(true) // Internal notes vs customer-visible
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  agent       SupportAgent @relation(fields: [agentId], references: [id])
+  
+  @@map("agent_notes")
+}
+
+model QuickResponse {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  category    String?
+  isActive    Boolean  @default(true)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("quick_responses")
 }
 
 model ScrapingCache {
   id          String   @id @default(cuid())
   url         String   @unique
-  content     String
+  title       String?  // Page title
+  content     String   // Scraped text content
+  headings    String[] // Extracted headings
+  links       Json?    // Extracted links as JSON
   lastScraped DateTime @default(now())
-  expiresAt   DateTime
+  createdAt   DateTime @default(now())
   
   @@map("scraping_cache")
 }

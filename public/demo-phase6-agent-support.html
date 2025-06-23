@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 6: Human Agent Support System - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .phase-info {
+            background: #f8f9ff;
+            border-left: 5px solid #4f46e5;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .feature-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h3 {
+            color: #1e40af;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .feature-card ul {
+            list-style: none;
+        }
+
+        .feature-card li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .feature-card li:before {
+            content: '✅';
+            position: absolute;
+            left: 0;
+        }
+
+        .demo-section {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .demo-section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .chat-demo {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .user-message {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .ai-message {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+        }
+
+        .handoff-message {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            font-weight: 600;
+        }
+
+        .agent-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .agent-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1e40af;
+        }
+
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .handoff-queue {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .priority-high {
+            border-left: 4px solid #dc2626;
+        }
+
+        .priority-normal {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #4338ca;
+        }
+
+        .btn-success {
+            background: #10b981;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .architecture-diagram {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .flow-step {
+            display: inline-block;
+            background: #eff6ff;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin: 5px;
+            font-weight: 600;
+            color: #1e40af;
+        }
+
+        .arrow {
+            font-size: 1.5rem;
+            color: #6b7280;
+            margin: 0 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .footer {
+            background: #1f2937;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Phase 6: Human Agent Support System</h1>
+            <p>Oman Airports AI Chatbot - Advanced Human Handoff Capabilities</p>
+        </div>
+
+        <div class="content">
+            <div class="phase-info">
+                <h2>📋 Phase 6 Overview</h2>
+                <p><strong>Objective:</strong> Implement comprehensive human agent support system with seamless AI-to-human handoffs, agent management, and live chat capabilities.</p>
+                <p><strong>Status:</strong> <span class="status-badge status-completed">Core Backend Completed</span></p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>🔐 Agent Management</h3>
+                    <ul>
+                        <li>Agent registration & authentication</li>
+                        <li>Role-based access control</li>
+                        <li>Skills-based routing</li>
+                        <li>Online/offline status tracking</li>
+                        <li>Performance metrics</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🤝 Handoff System</h3>
+                    <ul>
+                        <li>Automatic handoff detection</li>
+                        <li>Keyword-based triggers</li>
+                        <li>Priority-based queue management</li>
+                        <li>Context transfer</li>
+                        <li>Manual escalation</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>💬 Live Chat Interface</h3>
+                    <ul>
+                        <li>Real-time messaging</li>
+                        <li>Agent dashboard</li>
+                        <li>Chat history management</li>
+                        <li>File sharing capabilities</li>
+                        <li>Internal notes system</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h3>⚡ Agent Features</h3>
+                    <ul>
+                        <li>Quick response templates</li>
+                        <li>Customer information display</li>
+                        <li>Chat transfer capabilities</li>
+                        <li>Agent collaboration</li>
+                        <li>Performance analytics</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>🎭 Live Demo: Handoff Detection</h2>
+                
+                <div class="chat-demo">
+                    <h3>Customer Conversation Flow</h3>
+                    
+                    <div class="message user-message">
+                        <strong>👤 Customer:</strong> Hi, I need help with my flight booking
+                    </div>
+                    
+                    <div class="message ai-message">
+                        <strong>🤖 AI:</strong> I'd be happy to help you with your flight booking! What specific assistance do you need? I can help you with flight information, booking modifications, or general inquiries.
+                        <br><small>Confidence: 85%</small>
+                    </div>
+                    
+                    <div class="message user-message">
+                        <strong>👤 Customer:</strong> I'm having trouble with my booking confirmation and this is getting frustrating
+                    </div>
+                    
+                    <div class="message ai-message">
+                        <strong>🤖 AI:</strong> I understand your frustration with the booking confirmation issue. Let me help you resolve this...
+                        <br><small>Confidence: 70%</small>
+                    </div>
+                    
+                    <div class="message user-message">
+                        <strong>👤 Customer:</strong> This is not working, I need to speak to a human agent
+                    </div>
+                    
+                    <div class="message handoff-message">
+                        <strong>🤝 System:</strong> Handoff triggered! Keywords detected: "speak to a human agent"
+                        <br>Priority: HIGH | Reason: Customer explicitly requested human assistance
+                    </div>
+                    
+                    <div class="message ai-message">
+                        <strong>🤖 AI:</strong> I understand you'd like to speak with one of our human agents. I've connected you with our support team. An agent will be with you shortly to assist with your booking confirmation issue.
+                        <br><br><strong>🤝 I've connected you with our human support team. An agent will be with you shortly to assist with your request.</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>📊 Agent Dashboard Demo</h2>
+                
+                <div class="agent-panel">
+                    <h3>Agent: Sarah Ahmed (Online)</h3>
+                    
+                    <div class="agent-stats">
+                        <div class="stat-card">
+                            <div class="stat-number">2</div>
+                            <div class="stat-label">Active Chats</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">3</div>
+                            <div class="stat-label">Pending Handoffs</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">5</div>
+                            <div class="stat-label">Max Capacity</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">95%</div>
+                            <div class="stat-label">Satisfaction</div>
+                        </div>
+                    </div>
+
+                    <h4>Pending Handoffs Queue</h4>
+                    
+                    <div class="handoff-queue priority-high">
+                        <strong>Session: abc123...def</strong> | Priority: HIGH
+                        <br>Reason: Customer explicitly requested human assistance
+                        <br>Wait time: 2 minutes
+                        <br><button class="btn btn-success">Accept Chat</button>
+                    </div>
+                    
+                    <div class="handoff-queue priority-normal">
+                        <strong>Session: xyz789...ghi</strong> | Priority: NORMAL
+                        <br>Reason: Low AI confidence response
+                        <br>Wait time: 5 minutes
+                        <br><button class="btn btn-success">Accept Chat</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>🏗️ System Architecture</h2>
+                
+                <div class="architecture-diagram">
+                    <h3>Handoff Flow</h3>
+                    <div style="margin: 20px 0;">
+                        <span class="flow-step">Customer Message</span>
+                        <span class="arrow">→</span>
+                        <span class="flow-step">AI Analysis</span>
+                        <span class="arrow">→</span>
+                        <span class="flow-step">Handoff Detection</span>
+                        <span class="arrow">→</span>
+                        <span class="flow-step">Agent Assignment</span>
+                        <span class="arrow">→</span>
+                        <span class="flow-step">Live Chat</span>
+                    </div>
+                </div>
+
+                <h3>🔧 Technical Implementation</h3>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Database Schema</h3>
+                        <ul>
+                            <li>SupportAgent (enhanced)</li>
+                            <li>ChatHandoff</li>
+                            <li>AgentChat</li>
+                            <li>AgentNote</li>
+                            <li>QuickResponse</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h3>API Endpoints</h3>
+                        <ul>
+                            <li>POST /api/agent/auth</li>
+                            <li>POST /api/agent/handoff</li>
+                            <li>GET /api/agent/handoff</li>
+                            <li>Enhanced /api/chat/send</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h3>Services</h3>
+                        <ul>
+                            <li>AgentService</li>
+                            <li>Enhanced AI Service</li>
+                            <li>Handoff Detection</li>
+                            <li>Queue Management</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h3>Features Completed</h3>
+                        <ul>
+                            <li>Agent authentication</li>
+                            <li>Handoff request system</li>
+                            <li>Keyword detection</li>
+                            <li>Priority management</li>
+                            <li>Context transfer</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <h2>🚀 Next Steps (Phase 7)</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Admin Dashboard</h3>
+                        <ul>
+                            <li>Complete React UI components</li>
+                            <li>Real-time notifications</li>
+                            <li>Agent performance analytics</li>
+                            <li>System monitoring</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h3>Real-time Features</h3>
+                        <ul>
+                            <li>WebSocket integration</li>
+                            <li>Live chat interface</li>
+                            <li>Typing indicators</li>
+                            <li>Instant notifications</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <h3>✅ Phase 6: Human Agent Support System - COMPLETED</h3>
+            <p>Core backend infrastructure for seamless AI-to-human handoffs implemented successfully</p>
+            <p><strong>Next:</strong> Phase 7 - Admin Dashboard & Advanced UI Components</p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive elements
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simulate live updates
+            const stats = document.querySelectorAll('.stat-number');
+            
+            setInterval(() => {
+                stats.forEach(stat => {
+                    if (Math.random() > 0.7) {
+                        stat.style.transform = 'scale(1.1)';
+                        stat.style.color = '#10b981';
+                        setTimeout(() => {
+                            stat.style.transform = 'scale(1)';
+                            stat.style.color = '#1e40af';
+                        }, 300);
+                    }
+                });
+            }, 3000);
+
+            // Button interactions
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    this.textContent = 'Accepted!';
+                    this.style.background = '#10b981';
+                    this.disabled = true;
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

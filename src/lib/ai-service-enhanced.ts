@@ -1,5 +1,5 @@
-// AI Service for Oman Airports Chatbot
-// Supports multiple AI providers with free tiers
+// Enhanced AI Service for Oman Airports Chatbot
+// Supports multiple AI providers with free tiers + Knowledge Base Integration
 
 import { prisma } from './database';
 
