@@ -26,7 +26,10 @@ interface KnowledgeEntry {
   answer: string;
   category: string;
   sourceUrl?: string;
-  relevanceScore?: number;
+}
+
+interface ScoredKnowledgeEntry extends KnowledgeEntry {
+  relevanceScore: number;
 }
 
 export class AIService {
@@ -78,7 +81,7 @@ export class AIService {
   }
 
   // Enhanced knowledge base search
-  async searchKnowledgeBase(query: string): Promise<KnowledgeEntry[]> {
+  async searchKnowledgeBase(query: string): Promise<ScoredKnowledgeEntry[]> {
     try {
       const keywords = query.toLowerCase()
         .split(/\s+/)
@@ -99,7 +102,7 @@ export class AIService {
       });
 
       // Calculate relevance scores
-      const scoredEntries = entries.map(entry => {
+      const scoredEntries: ScoredKnowledgeEntry[] = entries.map(entry => {
         const combinedText = `${entry.question} ${entry.answer} ${entry.category}`.toLowerCase();
         
         let score = 0;
@@ -121,7 +124,7 @@ export class AIService {
         return {
           ...entry,
           relevanceScore: score
-        };
+        } as ScoredKnowledgeEntry;
       });
 
       // Filter and sort by relevance
