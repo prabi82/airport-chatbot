@@ -55,7 +55,7 @@ export class AIService {
         name: 'gemini',
         apiKey: process.env.GEMINI_API_KEY,
         endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
-        model: 'gemini-2.0-flash', // Latest free model
+        model: 'gemini-1.5-flash', // More stable free model with higher quota
         available: true
       });
     }
