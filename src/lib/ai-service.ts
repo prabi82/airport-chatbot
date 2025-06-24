@@ -195,7 +195,7 @@ export class AIService {
 
         const processingTime = Date.now() - startTime;
         return {
-          message: response,
+          message: this.formatResponse(response),
           success: true,
           provider: provider.name,
           processingTime,
@@ -342,6 +342,56 @@ export class AIService {
     return data.response || 'I apologize, but I cannot provide a response at the moment.';
   }
 
+  // Format AI responses for better readability
+  private formatResponse(response: string): string {
+    let formatted = response.trim();
+    
+    // Step 1: Clean up and normalize the text
+    formatted = formatted.replace(/\s+/g, ' '); // Remove extra spaces
+    
+    // Step 2: Add emojis to key terms
+    if (!formatted.includes('🚗')) {
+      formatted = formatted.replace(/\b(car rental|rent[- ]a[- ]car|rental car)\b/gi, '🚗 car rental');
+    }
+    if (!formatted.includes('🅿️')) {
+      formatted = formatted.replace(/\bparking\b/gi, '🅿️ parking');
+    }
+    if (!formatted.includes('✈️')) {
+      formatted = formatted.replace(/\bairport\b/gi, '✈️ airport');
+    }
+    if (!formatted.includes('💰')) {
+      formatted = formatted.replace(/\bOMR\b/g, '💰 OMR');
+    }
+    
+    // Step 3: Structure the content with proper sections
+    // Find and format section headers (words ending with colon)
+    formatted = formatted.replace(/\b([A-Z][^.]*?):\s*([^.]*\.)/g, '\n\n**$1:**\n• $2');
+    
+    // Step 4: Convert lists to proper bullet points
+    // Handle company names in lists
+    const companies = ['Avis', 'Hertz', 'Budget', 'Europcar', 'Sixt', 'Mark Rent a Car', 'Fast Rent a Car', 'United Car Rental'];
+    companies.forEach(company => {
+      const regex = new RegExp(`\\b${company}\\b`, 'g');
+      formatted = formatted.replace(regex, `\n• **${company}**`);
+    });
+    
+    // Step 5: Clean up formatting artifacts
+    formatted = formatted.replace(/\*\*\*+/g, '**'); // Fix triple asterisks
+    formatted = formatted.replace(/([.!?])\s*\n*\s*•/g, '$1\n\n•'); // Proper spacing before bullets
+    formatted = formatted.replace(/•\s*\*\*/g, '• **'); // Fix bullet + bold formatting
+    formatted = formatted.replace(/\*\*\s*•/g, '**\n• '); // Fix bold + bullet formatting
+    
+    // Step 6: Improve readability with proper line breaks
+    formatted = formatted.replace(/\.\s*([A-Z])/g, '.\n\n$1'); // Break after sentences
+    formatted = formatted.replace(/\n{3,}/g, '\n\n'); // Remove excessive line breaks
+    formatted = formatted.replace(/^\s*\n+/, ''); // Remove leading breaks
+    
+    // Step 7: Final cleanup
+    formatted = formatted.trim();
+    
+    return formatted;
+  }
+
   private buildPrompt(message: string, context: string): string {
     const systemPrompt = `You are a helpful AI assistant for Oman Airports. You provide accurate, specific information about:
 - Flight schedules and status
@@ -352,9 +402,17 @@ export class AIService {
 - Baggage handling and security
 - Dining and shopping options
 
+FORMATTING GUIDELINES:
+- Use clear bullet points (•) for lists
+- Add line breaks between sections
+- Use emojis sparingly for better visual appeal (🚗 for cars, 🅿️ for parking, ✈️ for flights, 💰 for prices)
+- Structure information logically with headers when appropriate
+- Keep paragraphs short and scannable
+- Use bold formatting (**text**) for important information like prices and key details
+
 IMPORTANT: If specific information is provided in the knowledge base context below, use that exact information in your response. Include specific details like prices, zones, rates, and contact information when available.
 
-Keep responses concise but informative. Always prioritize accuracy over general guidance.`;
+Format your response to be easy to read and scan quickly. Always prioritize accuracy over general guidance.`;
 
     if (context) {
       return `${systemPrompt}\n\nContext: ${context}\n\nUser Question: ${message}\n\nResponse:`;
@@ -368,26 +426,80 @@ Keep responses concise but informative. Always prioritize accuracy over general 
     const lowerMessage = message.toLowerCase();
     
     if (lowerMessage.includes('flight') || lowerMessage.includes('departure') || lowerMessage.includes('arrival')) {
-      return "For the most up-to-date flight information, please check the flight information displays at the airport or visit our website at omanairports.co.om. You can also contact our information desk for assistance.";
+      return `✈️ **Flight Information**
+
+For the most up-to-date flight details:
+• Check flight information displays at the airport
+• Visit our website: **omanairports.co.om**
+• Contact our information desk for assistance
+
+Our team is here to help with any flight-related questions!`;
     }
     
     if (lowerMessage.includes('parking') || lowerMessage.includes('car')) {
-      return "Parking is available at all Oman Airports terminals. For current rates and availability, please visit omanairports.co.om or contact our customer service team at the airport.";
+      return `🅿️ **Parking Services**
+
+Parking is available at all Oman Airports terminals:
+• Multiple parking zones available
+• Current rates and availability at **omanairports.co.om**
+• Contact our customer service team at the airport for assistance
+
+We offer convenient parking solutions for all travel needs!`;
     }
     
     if (lowerMessage.includes('taxi') || lowerMessage.includes('transport') || lowerMessage.includes('bus')) {
-      return "Transportation options are available at all airport terminals including taxis, buses, and car rentals. For detailed information and current schedules, please visit the ground transportation area or check with airport information.";
+      return `🚗 **Transportation Options**
+
+Multiple transportation options available:
+• Taxis (available 24/7)
+• Airport buses
+• Car rental services
+• Ride-sharing services
+
+For detailed schedules and information:
+• Visit the ground transportation area
+• Check with airport information desk`;
     }
     
     if (lowerMessage.includes('baggage') || lowerMessage.includes('luggage')) {
-      return "For baggage services and policies, please contact your airline directly or visit the baggage services counter at the terminal. Each airline has specific baggage allowances and procedures.";
+      return `🧳 **Baggage Services**
+
+For baggage assistance:
+• Contact your **airline directly** for policies
+• Visit the baggage services counter at your terminal
+• Each airline has specific allowances and procedures
+
+Our baggage services team is available to help!`;
     }
     
     // Default fallback
     const fallbackResponses = [
-      "Thank you for contacting Oman Airports. For immediate assistance, please visit our information desk at the terminal or check our website at omanairports.co.om for the latest information.",
-      "I'm currently unable to process your request. Please contact our customer service team at the airport or visit omanairports.co.om for comprehensive information about our services.",
-      "For the most accurate and up-to-date information, please visit our website at omanairports.co.om or speak with our airport staff who will be happy to assist you.",
+      `🏢 **Oman Airports Assistance**
+
+Thank you for contacting us! For immediate help:
+• Visit our information desk at the terminal
+• Check our website: **omanairports.co.om**
+• Speak with our friendly airport staff
+
+We're here to make your journey smooth and comfortable!`,
+      
+      `📞 **Customer Service**
+
+I'm currently unable to process your specific request.
+
+For comprehensive assistance:
+• Contact our customer service team at the airport
+• Visit **omanairports.co.om** for detailed information
+• Our staff is available to help with all inquiries`,
+      
+      `ℹ️ **Information & Support**
+
+For the most accurate and up-to-date information:
+• Visit **omanairports.co.om**
+• Speak with our airport staff
+• Check with our information desks
+
+We're committed to providing excellent service!`,
     ];
     
     return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
