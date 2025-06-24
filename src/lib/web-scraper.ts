@@ -139,18 +139,22 @@ export class WebScraperService {
     const entries: KnowledgeEntry[] = [];
     
     try {
-      // Determine category based on URL and content
-      const category = this.determineCategory(scrapedContent.url, scrapedContent.content);
-      
       // Create entries from headings and content sections
       const contentSections = this.extractContentSections(scrapedContent);
       
       for (const section of contentSections) {
         if (section.question && section.answer) {
+          // Determine category for each section individually
+          const sectionCategory = this.determineSectionCategory(
+            section.question, 
+            section.answer, 
+            scrapedContent.url
+          );
+          
           entries.push({
             question: section.question,
             answer: section.answer,
-            category: category,
+            category: sectionCategory,
             subcategory: section.subcategory,
             keywords: this.extractKeywords(section.question + ' ' + section.answer),
             sourceUrl: scrapedContent.url,
@@ -161,10 +165,11 @@ export class WebScraperService {
 
       // If no structured sections found, create general entries
       if (entries.length === 0) {
+        const generalCategory = this.determineCategory(scrapedContent.url, scrapedContent.content);
         entries.push({
           question: `What information is available about ${scrapedContent.title}?`,
           answer: this.summarizeContent(scrapedContent.content),
-          category: category,
+          category: generalCategory,
           keywords: this.extractKeywords(scrapedContent.title + ' ' + scrapedContent.content),
           sourceUrl: scrapedContent.url,
           priority: 1
@@ -179,27 +184,199 @@ export class WebScraperService {
     }
   }
 
+  // Determine category for individual sections
+  private determineSectionCategory(question: string, answer: string, url: string): string {
+    const urlLower = url.toLowerCase();
+    const contentLower = (question + ' ' + answer).toLowerCase();
+
+    // Check for dining/restaurants first (most specific for new content)
+    if (urlLower.includes('restaurant') || urlLower.includes('dining') || urlLower.includes('food') || 
+        urlLower.includes('cafe') || urlLower.includes('quick-bites') ||
+        contentLower.includes('restaurant') || contentLower.includes('cafe') || 
+        contentLower.includes('coffee') || contentLower.includes('food') || 
+        contentLower.includes('dining') || contentLower.includes('menu') || 
+        contentLower.includes('beverage') || contentLower.includes('meal') ||
+        contentLower.includes('caffè') || contentLower.includes('mcdonald') || 
+        contentLower.includes('kfc') || contentLower.includes('tim hortons') ||
+        contentLower.includes('baked goods') || contentLower.includes('pizza') ||
+        contentLower.includes('burger') || contentLower.includes('sandwich')) {
+      return 'dining';
+    }
+
+    // Check for shopping/retail
+    if (urlLower.includes('shop') || urlLower.includes('duty-free') || urlLower.includes('retail') ||
+        contentLower.includes('shopping') || contentLower.includes('duty free') || 
+        contentLower.includes('retail') || contentLower.includes('store') ||
+        contentLower.includes('souvenir') || contentLower.includes('brand') ||
+        contentLower.includes('outlet') || contentLower.includes('bargain')) {
+      return 'shopping';
+    }
+
+    // Check for parking (most specific)
+    if (urlLower.includes('parking') || urlLower.includes('park') || 
+        contentLower.includes('parking rates') || contentLower.includes('car park') || 
+        contentLower.includes('parking zones') || contentLower.includes('parking fee') ||
+        contentLower.includes('short-term parking') || contentLower.includes('long-term parking')) {
+      return 'parking';
+    }
+
+    // Check for transportation (more specific than flights)
+    if (urlLower.includes('transport') || urlLower.includes('taxi') || urlLower.includes('bus') || 
+        urlLower.includes('to-from') || urlLower.includes('transfer') || urlLower.includes('car-rental') ||
+        contentLower.includes('taxi service') || contentLower.includes('bus service') || 
+        contentLower.includes('shuttle') || contentLower.includes('transport service') ||
+        contentLower.includes('car rental') || contentLower.includes('ride sharing') ||
+        contentLower.includes('pick up') || contentLower.includes('drop off') ||
+        contentLower.includes('taxi') || contentLower.includes('shuttle bus')) {
+      return 'transportation';
+    }
+
+    // Check for security and baggage
+    if (urlLower.includes('security') || urlLower.includes('baggage') ||
+        contentLower.includes('security check') || contentLower.includes('baggage claim') || 
+        contentLower.includes('customs') || contentLower.includes('immigration') ||
+        contentLower.includes('x-ray') || contentLower.includes('screening')) {
+      return 'security';
+    }
+
+    // Check for lounges and premium services
+    if (urlLower.includes('lounge') || contentLower.includes('lounge') || 
+        contentLower.includes('primeclass') || contentLower.includes('premium service') ||
+        contentLower.includes('business lounge') || contentLower.includes('vip') ||
+        contentLower.includes('majan lounge')) {
+      return 'lounges';
+    }
+
+    // Check for medical and health services
+    if (urlLower.includes('medical') || urlLower.includes('health') ||
+        contentLower.includes('medical service') || contentLower.includes('first aid') || 
+        contentLower.includes('pharmacy') || contentLower.includes('doctor') ||
+        contentLower.includes('health') || contentLower.includes('spa') ||
+        contentLower.includes('be relax')) {
+      return 'health';
+    }
+
+    // Check for flights (use more specific terms to avoid false positives)
+    if (urlLower.includes('flight') || urlLower.includes('airline') || urlLower.includes('departure') ||
+        urlLower.includes('arrival') || contentLower.includes('flight schedule') || 
+        contentLower.includes('flight information') || contentLower.includes('check-in') || 
+        contentLower.includes('boarding') || contentLower.includes('gate information') || 
+        contentLower.includes('flight status') || contentLower.includes('airline') ||
+        contentLower.includes('terminal gate') || contentLower.includes('departure gate')) {
+      return 'flights';
+    }
+
+    // Check for general services
+    if (urlLower.includes('service') || urlLower.includes('facility') ||
+        contentLower.includes('service') || contentLower.includes('facility') ||
+        contentLower.includes('assistance') || contentLower.includes('help desk') ||
+        contentLower.includes('information desk') || contentLower.includes('tourist information')) {
+      return 'services';
+    }
+
+    // Check for amenities (catch-all for comfort services)
+    if (urlLower.includes('amenity') || urlLower.includes('comfort') ||
+        contentLower.includes('amenity') || contentLower.includes('comfort') ||
+        contentLower.includes('wi-fi') || contentLower.includes('wifi') ||
+        contentLower.includes('charging') || contentLower.includes('rest area') ||
+        contentLower.includes('prayer room') || contentLower.includes('children')) {
+      return 'amenities';
+    }
+
+    // Check for banking and financial services
+    if (urlLower.includes('bank') || urlLower.includes('currency') || urlLower.includes('exchange') ||
+        contentLower.includes('banking') || contentLower.includes('currency exchange') || 
+        contentLower.includes('atm') || contentLower.includes('money exchange') ||
+        contentLower.includes('financial service')) {
+      return 'banking';
+    }
+
+    // Auto-detect new categories based on URL patterns
+    const urlParts = urlLower.split('/').filter(part => part.length > 2);
+    const lastUrlPart = urlParts[urlParts.length - 1];
+    
+    // If URL contains a specific category indicator, use it
+    if (lastUrlPart && lastUrlPart !== 'content' && lastUrlPart !== 'en') {
+      // Clean up the URL part to make it a proper category
+      const potentialCategory = lastUrlPart.replace(/-/g, ' ').replace(/_/g, ' ');
+      
+      // Only create new category if it's not already covered
+      if (!['flight', 'transport', 'park', 'service', 'shop', 'dine'].some(existing => 
+           potentialCategory.includes(existing) || existing.includes(potentialCategory))) {
+        return potentialCategory;
+      }
+    }
+
+    // Fall back to page-level category determination
+    return this.determineCategory(url, answer);
+  }
+
   // Determine category based on URL and content
   private determineCategory(url: string, content: string): string {
     const urlLower = url.toLowerCase();
     const contentLower = content.toLowerCase();
 
-    if (urlLower.includes('flight') || contentLower.includes('flight') || contentLower.includes('departure') || contentLower.includes('arrival')) {
-      return 'flights';
+    // Check for dining/restaurants first
+    if (urlLower.includes('restaurant') || urlLower.includes('dining') || urlLower.includes('food') || 
+        urlLower.includes('cafe') || urlLower.includes('quick-bites') ||
+        contentLower.includes('restaurant') || contentLower.includes('cafe') || 
+        contentLower.includes('coffee') || contentLower.includes('dining') || 
+        contentLower.includes('menu') || contentLower.includes('meal')) {
+      return 'dining';
     }
-    if (urlLower.includes('transport') || contentLower.includes('taxi') || contentLower.includes('bus') || contentLower.includes('transport')) {
-      return 'transportation';
-    }
-    if (urlLower.includes('parking') || contentLower.includes('parking') || contentLower.includes('car park')) {
+
+    // Check for parking first (most specific)
+    if (urlLower.includes('parking') || urlLower.includes('park') || 
+        contentLower.includes('parking rates') || contentLower.includes('car park') || 
+        contentLower.includes('parking zones') || contentLower.includes('parking fee')) {
       return 'parking';
     }
-    if (urlLower.includes('service') || contentLower.includes('service') || contentLower.includes('facility')) {
+
+    // Check for transportation (more specific than flights)
+    if (urlLower.includes('transport') || urlLower.includes('taxi') || urlLower.includes('bus') || 
+        urlLower.includes('to-from') || urlLower.includes('transfer') ||
+        contentLower.includes('taxi service') || contentLower.includes('bus service') || 
+        contentLower.includes('shuttle') || contentLower.includes('transport service') ||
+        contentLower.includes('car rental') || contentLower.includes('ride sharing')) {
+      return 'transportation';
+    }
+
+    // Check for flights (use more specific terms)
+    if (urlLower.includes('flight') || urlLower.includes('airline') || 
+        contentLower.includes('flight schedule') || contentLower.includes('flight information') || 
+        contentLower.includes('check-in') || contentLower.includes('boarding') ||
+        contentLower.includes('gate information') || contentLower.includes('flight status')) {
+      return 'flights';
+    }
+
+    // Check for general departures/arrivals (could be flights or transport)
+    if (contentLower.includes('departure') || contentLower.includes('arrival')) {
+      // If it mentions specific transport, categorize as transportation
+      if (contentLower.includes('taxi departure') || contentLower.includes('bus departure') ||
+          contentLower.includes('pick up') || contentLower.includes('drop off')) {
+        return 'transportation';
+      }
+      // Otherwise, likely flights
+      return 'flights';
+    }
+
+    // Check for services
+    if (urlLower.includes('service') || urlLower.includes('facility') ||
+        contentLower.includes('service') || contentLower.includes('facility') ||
+        contentLower.includes('assistance') || contentLower.includes('help desk')) {
       return 'services';
     }
-    if (urlLower.includes('shop') || contentLower.includes('shop') || contentLower.includes('dining') || contentLower.includes('restaurant')) {
+
+    // Check for amenities
+    if (urlLower.includes('shop') || urlLower.includes('dining') || urlLower.includes('restaurant') ||
+        contentLower.includes('shopping') || contentLower.includes('restaurant') || 
+        contentLower.includes('cafe') || contentLower.includes('duty free')) {
       return 'amenities';
     }
-    if (urlLower.includes('security') || contentLower.includes('security') || contentLower.includes('baggage')) {
+
+    // Check for security
+    if (urlLower.includes('security') || contentLower.includes('security') || 
+        contentLower.includes('baggage') || contentLower.includes('customs')) {
       return 'security';
     }
     

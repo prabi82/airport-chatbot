@@ -16,6 +16,18 @@ interface QuotaStatus {
   remainingCount: number;
   resetAt: string;
   percentageUsed: number;
+  quotaTier?: string;
+  model?: string;
+  rpmLimit?: number;
+  tpmLimit?: number;
+  currentRpm?: number;
+  currentTpm?: number;
+  rpmPercentage?: number;
+  tpmPercentage?: number;
+  isNearDailyLimit?: boolean;
+  isNearRpmLimit?: boolean;
+  isAtDailyLimit?: boolean;
+  isAtRpmLimit?: boolean;
 }
 
 interface Analytics {
@@ -67,6 +79,7 @@ export default function AdminDashboard() {
   const [knowledgeStats, setKnowledgeStats] = useState<{ category: string; count: number }[]>([]);
   const [totalKnowledgeEntries, setTotalKnowledgeEntries] = useState(0);
   const [apiQuotas, setApiQuotas] = useState<{ [provider: string]: QuotaStatus }>({});
+  const [quotaAlerts, setQuotaAlerts] = useState<string[]>([]);
 
   useEffect(() => {
     checkAuthentication();
@@ -155,6 +168,13 @@ export default function AdminDashboard() {
           topQueries: Array.isArray(analyticsData.topQueries) ? analyticsData.topQueries : [],
           responseAccuracy: analyticsData.responseAccuracy || 85 // Default value
         });
+
+        // Update API quotas with enhanced information
+        if (data.quotaStatus) {
+          setApiQuotas(data.quotaStatus);
+          // Check for quota alerts
+          checkQuotaAlerts(data.quotaStatus);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
@@ -197,6 +217,37 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Failed to fetch scraping history:', error);
     }
+  };
+
+  const checkQuotaAlerts = (quotaStatus: { [provider: string]: QuotaStatus }) => {
+    const alerts: string[] = [];
+    
+    Object.entries(quotaStatus).forEach(([provider, quota]) => {
+      if (!quota) return;
+      
+      // Daily limit alerts
+      if (quota.percentageUsed >= 100) {
+        alerts.push(`🚨 ${provider.toUpperCase()}: Daily limit reached! (${quota.usedCount}/${quota.dailyLimit})`);
+      } else if (quota.percentageUsed >= 90) {
+        alerts.push(`⚠️ ${provider.toUpperCase()}: Near daily limit (${quota.percentageUsed}% used)`);
+      } else if (quota.percentageUsed >= 75) {
+        alerts.push(`🟡 ${provider.toUpperCase()}: High usage warning (${quota.percentageUsed}% used)`);
+      }
+      
+      // RPM alerts (if available)
+      if (quota.rpmPercentage !== undefined) {
+        if (quota.rpmPercentage >= 90) {
+          alerts.push(`🚨 ${provider.toUpperCase()}: Near RPM limit (${quota.rpmPercentage}% of ${quota.rpmLimit}/min)`);
+        }
+      }
+      
+      // Low remaining requests alerts
+      if (quota.remainingCount <= 50 && quota.remainingCount > 0) {
+        alerts.push(`⚠️ ${provider.toUpperCase()}: Only ${quota.remainingCount} requests remaining today`);
+      }
+    });
+    
+    setQuotaAlerts(alerts);
   };
 
   const handleLogout = async () => {
@@ -422,6 +473,25 @@ export default function AdminDashboard() {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* Quota Alerts Section */}
+              {quotaAlerts.length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 p-4 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <span className="text-red-400 text-xl">🚨</span>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-lg font-medium text-red-800">Quota Alerts</h3>
+                      <div className="mt-2 space-y-1">
+                        {quotaAlerts.map((alert, index) => (
+                          <p key={index} className="text-sm text-red-700 font-medium">{alert}</p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white overflow-hidden shadow rounded-lg">
                   <div className="p-5">
@@ -502,12 +572,35 @@ export default function AdminDashboard() {
                   <div className="px-4 py-5 sm:p-6">
                     <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">🤖 AI API Quota Status</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                      <div className={`p-4 rounded-lg border ${
+                        apiQuotas.gemini.percentageUsed >= 100 ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-300' :
+                        apiQuotas.gemini.percentageUsed >= 90 ? 'bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-300' :
+                        apiQuotas.gemini.percentageUsed >= 75 ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300' :
+                        'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+                      }`}>
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-medium text-blue-900">Google Gemini API</h4>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            apiQuotas.gemini.percentageUsed > 90 ? 'bg-red-100 text-red-800' :
-                            apiQuotas.gemini.percentageUsed > 70 ? 'bg-yellow-100 text-yellow-800' :
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <h4 className="text-sm font-medium text-blue-900">
+                                {apiQuotas.gemini.model || 'Google Gemini API'}
+                              </h4>
+                              {apiQuotas.gemini.percentageUsed >= 100 && (
+                                <span className="text-red-500 text-sm">🚨 LIMIT REACHED</span>
+                              )}
+                              {apiQuotas.gemini.percentageUsed >= 90 && apiQuotas.gemini.percentageUsed < 100 && (
+                                <span className="text-orange-500 text-sm">⚠️ NEAR LIMIT</span>
+                              )}
+                            </div>
+                            {apiQuotas.gemini.quotaTier && (
+                              <p className="text-xs text-blue-700 mt-1">
+                                🎯 {apiQuotas.gemini.quotaTier}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`px-2 py-1 text-xs rounded-full font-bold ${
+                            apiQuotas.gemini.percentageUsed >= 100 ? 'bg-red-100 text-red-800 animate-pulse' :
+                            apiQuotas.gemini.percentageUsed >= 90 ? 'bg-orange-100 text-orange-800' :
+                            apiQuotas.gemini.percentageUsed >= 75 ? 'bg-yellow-100 text-yellow-800' :
                             'bg-green-100 text-green-800'
                           }`}>
                             {apiQuotas.gemini.percentageUsed}% used
@@ -516,7 +609,9 @@ export default function AdminDashboard() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Daily Limit:</span>
-                            <span className="font-medium text-gray-900">{apiQuotas.gemini.dailyLimit}</span>
+                            <span className="font-medium text-gray-900">
+                              {apiQuotas.gemini.dailyLimit === 999999 ? 'Unlimited' : apiQuotas.gemini.dailyLimit}
+                            </span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Used Today:</span>
@@ -529,21 +624,104 @@ export default function AdminDashboard() {
                               apiQuotas.gemini.remainingCount < 300 ? 'text-yellow-600' :
                               'text-green-600'
                             }`}>
-                              {apiQuotas.gemini.remainingCount}
+                              {apiQuotas.gemini.remainingCount === 999999 ? 'Unlimited' : apiQuotas.gemini.remainingCount}
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                          
+                                                        {/* Real-time quota limits */}
+                              {(apiQuotas.gemini.rpmLimit || apiQuotas.gemini.tpmLimit) && (
+                                <>
+                                  <hr className="my-2 border-blue-200" />
+                                  <div className="text-xs text-blue-800 font-medium mb-1">📊 Real-time Limits</div>
+                                  
+                                  {/* RPM Status */}
+                                  {apiQuotas.gemini.rpmLimit && (
+                                    <>
+                                      <div className="flex justify-between text-xs">
+                                        <span className="text-gray-600">Requests/min:</span>
+                                        <span className={`font-medium ${
+                                          (apiQuotas.gemini.rpmPercentage ?? 0) >= 90 ? 'text-red-600' :
+                                          (apiQuotas.gemini.rpmPercentage ?? 0) >= 75 ? 'text-orange-600' :
+                                          'text-blue-900'
+                                        }`}>
+                                          {apiQuotas.gemini.currentRpm || 0}/{apiQuotas.gemini.rpmLimit}
+                                        </span>
+                                      </div>
+                                      
+                                      {/* RPM Progress Bar */}
+                                      <div className="w-full bg-gray-200 rounded-full h-1 mt-1 mb-2">
+                                        <div 
+                                          className={`h-1 rounded-full transition-all duration-300 ${
+                                            (apiQuotas.gemini.rpmPercentage || 0) >= 90 ? 'bg-red-500' :
+                                            (apiQuotas.gemini.rpmPercentage || 0) >= 75 ? 'bg-orange-500' :
+                                            'bg-blue-500'
+                                          }`}
+                                          style={{ width: `${Math.min(apiQuotas.gemini.rpmPercentage || 0, 100)}%` }}
+                                        ></div>
+                                      </div>
+                                      
+                                      {/* RPM Status Text */}
+                                      <div className="text-xs text-center mb-1">
+                                        <span className={`font-medium ${
+                                          (apiQuotas.gemini.rpmPercentage || 0) >= 90 ? 'text-red-600' :
+                                          (apiQuotas.gemini.rpmPercentage || 0) >= 75 ? 'text-orange-600' :
+                                          'text-blue-600'
+                                        }`}>
+                                          {apiQuotas.gemini.rpmPercentage || 0}% RPM Usage
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+                                  
+                                  {/* TPM Status */}
+                                  {apiQuotas.gemini.tpmLimit && (
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-gray-600">Tokens/min:</span>
+                                      <span className="font-medium text-blue-900">{apiQuotas.gemini.tpmLimit.toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                          
+                          <div className="w-full bg-gray-200 rounded-full h-3 mt-3 relative overflow-hidden">
                             <div 
-                              className={`h-2 rounded-full transition-all duration-300 ${
-                                apiQuotas.gemini.percentageUsed > 90 ? 'bg-red-500' :
-                                apiQuotas.gemini.percentageUsed > 70 ? 'bg-yellow-500' :
+                              className={`h-3 rounded-full transition-all duration-500 ${
+                                apiQuotas.gemini.percentageUsed >= 100 ? 'bg-red-500 animate-pulse' :
+                                apiQuotas.gemini.percentageUsed >= 90 ? 'bg-orange-500' :
+                                apiQuotas.gemini.percentageUsed >= 75 ? 'bg-yellow-500' :
                                 'bg-green-500'
                               }`}
-                              style={{ width: `${apiQuotas.gemini.percentageUsed}%` }}
+                              style={{ width: `${Math.min(apiQuotas.gemini.percentageUsed, 100)}%` }}
                             ></div>
+                            {/* Danger zone indicator */}
+                            {apiQuotas.gemini.percentageUsed < 90 && (
+                              <div 
+                                className="absolute top-0 h-3 w-1 bg-red-300 opacity-50"
+                                style={{ left: '90%' }}
+                                title="Danger zone (90%)"
+                              ></div>
+                            )}
+                          </div>
+                          
+                          {/* Real-time usage status */}
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-xs text-gray-500">
+                              📊 Live Status
+                            </span>
+                            <span className={`text-xs font-medium ${
+                              apiQuotas.gemini.percentageUsed >= 100 ? 'text-red-600' :
+                              apiQuotas.gemini.percentageUsed >= 90 ? 'text-orange-600' :
+                              apiQuotas.gemini.percentageUsed >= 75 ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
+                              {apiQuotas.gemini.percentageUsed >= 100 ? '🛑 BLOCKED' :
+                               apiQuotas.gemini.percentageUsed >= 90 ? '⚠️ CRITICAL' :
+                               apiQuotas.gemini.percentageUsed >= 75 ? '🟡 WARNING' :
+                               '✅ HEALTHY'}
+                            </span>
                           </div>
                           <p className="text-xs text-gray-500 mt-2">
-                            Resets at: {new Date(apiQuotas.gemini.resetAt).toLocaleTimeString()}
+                            🕒 Resets at: {new Date(apiQuotas.gemini.resetAt).toLocaleTimeString()}
                           </p>
                         </div>
                       </div>

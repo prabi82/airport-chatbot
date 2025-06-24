@@ -2,6 +2,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminService } from '@/lib/admin-service';
+import { AIService } from '@/lib/ai-service';
+
+const aiService = AIService.getInstance();
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,9 +23,33 @@ export async function GET(request: NextRequest) {
 
     const analytics = await adminService.getAnalytics(dateRange);
 
+    // Get real-time quota information with actual limits
+    const quotaStatus = await aiService.getAllQuotaStatus();
+    
+    // Get real Gemini quota limits
+    const realGeminiLimits = await aiService.getRealQuotaLimits();
+    
+    // Enhanced quota information
+    const enhancedQuotaStatus = {
+      ...quotaStatus,
+      gemini: {
+        ...quotaStatus.gemini,
+        realLimits: realGeminiLimits,
+        actualTier: realGeminiLimits.tier,
+        model: realGeminiLimits.model,
+        description: realGeminiLimits.description
+      }
+    };
+
     return NextResponse.json({
       success: true,
-      analytics
+      analytics,
+      quotaStatus: enhancedQuotaStatus,
+      realQuotaInfo: {
+        gemini: realGeminiLimits,
+        lastUpdated: new Date().toISOString(),
+        source: 'Google AI API Documentation'
+      }
     });
 
   } catch (error) {

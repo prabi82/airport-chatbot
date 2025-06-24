@@ -30,6 +30,31 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Processing message: "${message}" for session: ${sessionId}`);
 
+    // Retrieve conversation history for context
+    let conversationContext = '';
+    try {
+      const recentMessages = await prisma.chatMessage.findMany({
+        where: { sessionId },
+        orderBy: { createdAt: 'desc' },
+        take: 5, // Last 5 messages for context
+        select: {
+          message: true,
+          response: true,
+          createdAt: true
+        }
+      });
+
+      if (recentMessages.length > 0) {
+        conversationContext = '\n\nRecent Conversation History:\n';
+        recentMessages.reverse().forEach((msg, index) => {
+          conversationContext += `${index + 1}. User: ${msg.message}\n   AI: ${msg.response}\n`;
+        });
+        conversationContext += '\nPlease consider this conversation history when responding to maintain context and continuity.\n';
+      }
+    } catch (error) {
+      console.warn('Failed to retrieve conversation history:', error);
+    }
+
     // Check for explicit handoff requests
     const handoffKeywords = [
       'speak to human', 'talk to human', 'human agent', 'customer service',
@@ -42,8 +67,8 @@ export async function POST(request: NextRequest) {
       message.toLowerCase().includes(keyword.toLowerCase())
     );
 
-    // Use AI service for response generation
-    const aiResponse = await aiService.generateResponse(message, '', sessionId);
+    // Use AI service for response generation with conversation context
+    const aiResponse = await aiService.generateResponse(message, conversationContext, sessionId);
 
     // Determine if human assistance is needed (using success as confidence indicator)
     const confidence = aiResponse.success ? 0.8 : 0.3;
@@ -87,14 +112,15 @@ export async function POST(request: NextRequest) {
       success: true,
       response: responseContent,
       confidence: confidence,
-      sources: [], // AI service doesn't provide sources currently
+      sources: aiResponse.sources || [], // Use actual sources from AI service
       intent: 'general', // Simplified intent detection
       requiresHuman,
       handoffRequested: !!handoffId,
       handoffId,
       suggestedActions: [], // AI service doesn't provide suggested actions currently
       responseTime: aiResponse.processingTime,
-      provider: aiResponse.provider
+      provider: aiResponse.provider,
+      knowledgeBaseUsed: aiResponse.knowledgeBaseUsed || false
     });
 
   } catch (error) {

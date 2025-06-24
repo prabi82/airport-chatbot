@@ -35,6 +35,7 @@ interface ScoredKnowledgeEntry extends KnowledgeEntry {
 export class AIService {
   private static instance: AIService;
   private providers: AIProvider[] = [];
+  private requestTracker: Map<string, number[]> = new Map(); // Track requests per minute
 
   private constructor() {
     this.initializeProviders();
@@ -55,7 +56,7 @@ export class AIService {
         name: 'gemini',
         apiKey: process.env.GEMINI_API_KEY,
         endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
-        model: 'gemini-1.5-flash', // More stable free model with higher quota
+        model: 'gemini-2.5-flash-lite-preview-06-17', // Latest Gemini 2.5 Flash-Lite with improved performance
         available: true
       });
     }
@@ -83,15 +84,20 @@ export class AIService {
   // Enhanced knowledge base search
   async searchKnowledgeBase(query: string): Promise<ScoredKnowledgeEntry[]> {
     try {
+      // Extract meaningful keywords (excluding common words and location terms)
+      const stopWords = ['what', 'is', 'are', 'the', 'at', 'in', 'on', 'and', 'or', 'for', 'with', 'by', 'to', 'from', 'of', 'a', 'an', 'airport', 'airports', 'muscat', 'oman'];
       const keywords = query.toLowerCase()
         .split(/\s+/)
-        .filter(word => word.length > 2)
+        .filter(word => word.length > 2 && !stopWords.includes(word))
         .slice(0, 10); // Limit to 10 keywords for performance
 
       if (keywords.length === 0) return [];
 
       // Search in knowledge base
       const entries = await prisma.knowledgeBase.findMany({
+        where: {
+          isActive: true
+        },
         select: {
           id: true,
           question: true,
@@ -101,24 +107,162 @@ export class AIService {
         }
       });
 
-      // Calculate relevance scores
+      // Calculate relevance scores with improved algorithm
       const scoredEntries: ScoredKnowledgeEntry[] = entries.map(entry => {
-        const combinedText = `${entry.question} ${entry.answer} ${entry.category}`.toLowerCase();
+        const questionText = entry.question.toLowerCase();
+        const answerText = entry.answer.toLowerCase();
+        const categoryText = entry.category.toLowerCase();
         
         let score = 0;
         keywords.forEach(keyword => {
-          const matches = (combinedText.match(new RegExp(keyword, 'g')) || []).length;
-          score += matches;
+          // Score for question matches (highest priority)
+          const questionMatches = (questionText.match(new RegExp(keyword, 'g')) || []).length;
+          score += questionMatches * 5;
           
-          // Bonus for exact phrase matches
-          if (combinedText.includes(keyword)) {
-            score += 2;
-          }
+          // Score for answer matches (medium priority)
+          const answerMatches = (answerText.match(new RegExp(keyword, 'g')) || []).length;
+          score += answerMatches * 3;
           
-          // Bonus for question title matches
-          if (entry.question.toLowerCase().includes(keyword)) {
-            score += 3;
+          // Score for category matches (boost for relevant categories)
+          const categoryMatches = (categoryText.match(new RegExp(keyword, 'g')) || []).length;
+          score += categoryMatches * 4;
+          
+                  // Special boost for dining-related keywords
+        const diningKeywords = ['food', 'restaurant', 'dining', 'coffee', 'cafe', 'kitchen', 'eat', 'drink', 'meal', 'indian', 'spice', 'options', 'healthy'];
+        if (diningKeywords.includes(keyword) && categoryText.includes('dining')) {
+          score += 15; // Significant boost for dining queries
+        }
+        
+        // Boost for health-related queries
+        if (['healthy', 'health', 'nutritious'].includes(keyword)) {
+          if (questionText.includes('plenty') || answerText.includes('plenty') || 
+              answerText.includes('healthy') || answerText.includes('nutritious') || answerText.includes('wholesome')) {
+            score += 30; // Major boost for healthy dining content
           }
+        }
+        
+        // Additional boost for general dining queries
+        if (['options', 'available'].includes(keyword) && categoryText.includes('dining')) {
+          score += 12; // Boost for "options available" in dining context
+        }
+        
+        // Boost for specific restaurant/food content
+        const restaurantIndicators = ['restaurant', 'quick bites', 'spice kitchen', 'mcdonald', 'kfc', 'coffee', 'cafe', 'tim hortons', 'cakes', 'caribou', 'bakes'];
+        if (restaurantIndicators.some(indicator => questionText.includes(indicator) || answerText.includes(indicator))) {
+          if (['dining', 'options', 'available', 'find', 'where', 'shops', 'bakeries', 'dessert', 'bakery'].includes(keyword)) {
+            score += 20; // Major boost for actual restaurant content
+          }
+        }
+        
+        // Boost for bakery/dessert queries
+        if (['bakery', 'bakeries', 'dessert', 'cake', 'cakes', 'baked'].includes(keyword)) {
+          if (questionText.includes('cake') || answerText.includes('cake') || 
+              answerText.includes('baked') || answerText.includes('dessert')) {
+            score += 25; // Major boost for bakery/dessert content
+          }
+        }
+        
+        // Special boost for coffee/cafe related queries
+        if (['coffee', 'cafe'].includes(keyword)) {
+          if (questionText.includes('coffee') || answerText.includes('coffee') || 
+              questionText.includes('cafe') || answerText.includes('cafe')) {
+            score += 25; // Major boost for coffee-specific content
+          }
+        }
+        
+        // Boost for Arabic/Middle Eastern queries
+        if (['arabic', 'middle', 'eastern', 'levant', 'turkish'].includes(keyword)) {
+          if (questionText.includes('noor') || answerText.includes('noor') || 
+              answerText.includes('arabic') || answerText.includes('turkish') || 
+              answerText.includes('levant') || answerText.includes('middle eastern')) {
+            score += 30; // Major boost for Arabic/Middle Eastern content
+          }
+        }
+        
+        // Boost for sports bar queries
+        if (['sports', 'bar', 'games', 'watch'].includes(keyword)) {
+          if (questionText.includes('tickerdaze') || answerText.includes('tickerdaze') || 
+              answerText.includes('sports') || answerText.includes('games') || 
+              answerText.includes('gastro') || answerText.includes('bar')) {
+            score += 30; // Major boost for sports bar content
+          }
+        }
+        
+        // Boost for Latin cuisine queries
+        if (['latin', 'american'].includes(keyword)) {
+          if (questionText.includes('luna') || answerText.includes('luna') || 
+              answerText.includes('latin')) {
+            score += 30; // Major boost for Latin cuisine content
+          }
+        }
+        
+        // Boost for pre-order queries
+        if (['pre-order', 'preorder', 'order', 'advance'].includes(keyword)) {
+          if (questionText.includes('pre-order') || answerText.includes('pre-order') || 
+              answerText.includes('advance') || answerText.includes('order')) {
+            score += 35; // Major boost for pre-order content
+          }
+        }
+        
+        // Boost for location queries
+        if (['where', 'located', 'location', 'most'].includes(keyword)) {
+          if (questionText.includes('restaurants') || questionText.includes('dining') || 
+              answerText.includes('level 4') || answerText.includes('departures') || 
+              answerText.includes('most restaurants')) {
+            score += 35; // Major boost for location content
+          }
+        }
+        
+        // Boost for Italian cuisine queries
+        if (['italian', 'pizza', 'pasta'].includes(keyword)) {
+          if (questionText.includes('italian') || answerText.includes('italian') || 
+              answerText.includes('pizza') || answerText.includes('nero') || 
+              answerText.includes('caffè')) {
+            score += 30; // Major boost for Italian cuisine content
+          }
+        }
+        
+        // Boost for food court queries
+        if (['food', 'court', 'area'].includes(keyword)) {
+          if (questionText.includes('food court') || answerText.includes('food court') || 
+              answerText.includes('dining area') || answerText.includes('centralized')) {
+            score += 35; // Major boost for food court content
+          }
+        }
+        
+        // Boost for children's meals queries
+        if (['children', 'kids', 'meals', 'cater'].includes(keyword)) {
+          if (questionText.includes('children') || answerText.includes('children') || 
+              answerText.includes('family-friendly') || answerText.includes('kid-friendly')) {
+            score += 35; // Major boost for children's meals content
+          }
+        }
+        
+        // Boost for business meeting queries
+        if (['business', 'meeting', 'best', 'professional'].includes(keyword)) {
+          if (questionText.includes('business') || questionText.includes('meeting') || 
+              answerText.includes('business') || answerText.includes('upscale') || 
+              answerText.includes('professional') || answerText.includes('confidential')) {
+            score += 35; // Major boost for business meeting content
+          }
+        }
+        
+        // Boost for 24/7 and hours queries
+        if (['24/7', 'hours', 'operating', 'open'].includes(keyword)) {
+          if (questionText.includes('24') || questionText.includes('hours') || 
+              answerText.includes('24') || answerText.includes('hours') || 
+              answerText.includes('operating') || answerText.includes('schedule')) {
+            score += 35; // Major boost for hours/operating content
+          }
+        }
+        
+        // Boost for halal food queries
+        if (['halal', 'food', 'find'].includes(keyword)) {
+          if (questionText.includes('halal') || answerText.includes('halal') || 
+              answerText.includes('certified') || answerText.includes('oman')) {
+            score += 35; // Major boost for halal food content
+          }
+        }
         });
 
         return {
@@ -131,7 +275,7 @@ export class AIService {
       return scoredEntries
         .filter(entry => entry.relevanceScore > 0)
         .sort((a, b) => b.relevanceScore - a.relevanceScore)
-        .slice(0, 3); // Top 3 most relevant entries
+        .slice(0, 10); // Top 10 most relevant entries - Gemini can handle much more context!
 
     } catch (error) {
       console.error('Error searching knowledge base:', error);
@@ -160,6 +304,43 @@ export class AIService {
         }
       });
       knowledgeContext += '\nPlease use this specific information to provide accurate, detailed responses.\n';
+    }
+
+    // Check if this is a follow-up question
+    const messageLower = message.toLowerCase();
+    const isFollowUpQuestion = messageLower.includes('more details') || 
+                              messageLower.includes('tell me more') ||
+                              messageLower.includes('can you provide more') ||
+                              messageLower.includes('what about') ||
+                              messageLower.includes('more info') ||
+                              messageLower.includes('elaborate') ||
+                              messageLower.startsWith('more ') ||
+                              messageLower === 'more' ||
+                              messageLower.includes('details');
+
+    // For listing questions (coffee, dining, etc), use enhanced knowledge base for better formatting
+    const isListingQuestion = messageLower.includes('coffee') || messageLower.includes('dining') || 
+                              messageLower.includes('restaurant') || messageLower.includes('food') ||
+                              messageLower.includes('where can i get') || messageLower.includes('what are');
+    
+    // Use enhanced knowledge base for listing questions (but not follow-ups which need AI context)
+    if (knowledgeEntries.length > 0 && isListingQuestion && !isFollowUpQuestion) {
+      const processingTime = Date.now() - startTime;
+      
+      // Use enhanced knowledge base for clean, structured responses
+      const comprehensiveResponse = this.createComprehensiveKnowledgeResponse(
+        message, 
+        knowledgeEntries
+      );
+      
+      return {
+        message: comprehensiveResponse,
+        success: true,
+        provider: 'enhanced-knowledge-base',
+        processingTime,
+        knowledgeBaseUsed: true,
+        sources: [...new Set(sources)]
+      };
     }
 
     // Combine contexts
@@ -209,13 +390,20 @@ export class AIService {
       }
     }
 
-    // Fallback to knowledge base if AI providers fail
+    // Enhanced knowledge base fallback with intelligent processing
     if (knowledgeEntries.length > 0) {
       const processingTime = Date.now() - startTime;
+      
+      // Create comprehensive response using all relevant knowledge entries
+      const comprehensiveResponse = this.createComprehensiveKnowledgeResponse(
+        message, 
+        knowledgeEntries
+      );
+      
       return {
-        message: knowledgeEntries[0].answer,
+        message: comprehensiveResponse,
         success: true,
-        provider: 'knowledge-base',
+        provider: 'enhanced-knowledge-base',
         processingTime,
         knowledgeBaseUsed: true,
         sources: [...new Set(sources)]
@@ -235,6 +423,9 @@ export class AIService {
   }
 
   private async callGemini(message: string, context: string, provider: AIProvider): Promise<string> {
+    // Track RPM usage for real-time monitoring
+    this.trackRpmUsage('gemini');
+    
     const prompt = this.buildPrompt(message, context);
     
     const response = await fetch(`${provider.endpoint}/${provider.model}:generateContent?key=${provider.apiKey}`, {
@@ -253,10 +444,10 @@ export class AIService {
           }
         ],
         generationConfig: {
-          temperature: 0.7,
-          topK: 40,
+          temperature: 1.0, // Optimal temperature for Gemini 2.5 Flash-Lite
+          topK: 64, // Fixed value for 2.5 Flash-Lite
           topP: 0.95,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 8192, // Gemini 2.5 Flash-Lite supports up to 64k tokens
         },
         safetySettings: [
           {
@@ -342,83 +533,208 @@ export class AIService {
     return data.response || 'I apologize, but I cannot provide a response at the moment.';
   }
 
-  // Format AI responses for better readability
+  // Format AI responses for better readability and conciseness
   private formatResponse(response: string): string {
     let formatted = response.trim();
     
-    // Step 1: Clean up and normalize the text
-    formatted = formatted.replace(/\s+/g, ' '); // Remove extra spaces
+    // Step 1: Clean encoding issues
+    formatted = formatted.replace(/Γ[^a-zA-Z\s]*/g, ''); // Remove encoding artifacts
+    formatted = formatted.replace(/├¿/g, 'è'); // Fix accented characters
     
-    // Step 2: Add emojis to key terms
-    if (!formatted.includes('🚗')) {
-      formatted = formatted.replace(/\b(car rental|rent[- ]a[- ]car|rental car)\b/gi, '🚗 car rental');
+    // Step 2: Fix malformed bold formatting
+    formatted = formatted.replace(/\*{3,}/g, '**'); // Fix multiple asterisks
+    formatted = formatted.replace(/\*\*([^*]+)\*/g, '**$1**'); // Fix incomplete bold tags
+    formatted = formatted.replace(/\*([^*\n]+)\*\*([^*\n]*)/g, '**$1**$2'); // Fix mismatched asterisks
+    formatted = formatted.replace(/\*\*\s*\*\*/g, ''); // Remove empty bold tags
+    
+    // Step 3: Fix bullet points and line breaks properly
+    formatted = formatted.replace(/\s*[\*\-\+]\s+/g, '\n• '); // Convert bullets to • with newlines
+    formatted = formatted.replace(/([:\.])\s*\n•/g, '$1\n• '); // Proper spacing after colons/periods
+    
+    // Step 4: Clean up whitespace and structure
+    formatted = formatted.replace(/\n{3,}/g, '\n\n'); // Max 2 line breaks
+    formatted = formatted.replace(/\n•\s+/g, '\n• '); // Normalize bullet spacing
+    formatted = formatted.replace(/^\n+|\n+$/g, ''); // Remove leading/trailing breaks
+    
+    return formatted.trim();
+  }
+
+  // Create comprehensive response using multiple knowledge entries
+  private createComprehensiveKnowledgeResponse(
+    userQuestion: string, 
+    knowledgeEntries: ScoredKnowledgeEntry[]
+  ): string {
+    const questionLower = userQuestion.toLowerCase();
+    
+    // Determine response type based on question
+    const isListingQuestion = questionLower.includes('what') || 
+                             questionLower.includes('dining options') || 
+                             questionLower.includes('restaurants') ||
+                             questionLower.includes('available') ||
+                             questionLower.includes('coffee') ||
+                             questionLower.includes('where can i get') ||
+                             questionLower.includes('dining') ||
+                             questionLower.includes('food');
+    
+    if (isListingQuestion && knowledgeEntries.length > 1) {
+      // Create comprehensive listing response
+      return this.createListingResponse(userQuestion, knowledgeEntries);
+    } else {
+      // Enhanced single-answer response with context
+      return this.createEnhancedSingleResponse(knowledgeEntries[0], knowledgeEntries.slice(1));
     }
-    if (!formatted.includes('🅿️')) {
-      formatted = formatted.replace(/\bparking\b/gi, '🅿️ parking');
-    }
-    if (!formatted.includes('✈️')) {
-      formatted = formatted.replace(/\bairport\b/gi, '✈️ airport');
-    }
-    if (!formatted.includes('💰')) {
-      formatted = formatted.replace(/\bOMR\b/g, '💰 OMR');
+  }
+  
+  private createListingResponse(userQuestion: string, entries: ScoredKnowledgeEntry[]): string {
+    const questionLower = userQuestion.toLowerCase();
+    let response = '';
+    
+    // Create simple header
+    if (questionLower.includes('coffee')) {
+      response = 'Coffee locations ☕:\n';
+    } else if (questionLower.includes('dining') || questionLower.includes('restaurant') || questionLower.includes('food')) {
+      response = 'Dining options 🍽️:\n';
+    } else {
+      response = 'Available options:\n';
     }
     
-    // Step 3: Structure the content with proper sections
-    // Find and format section headers (words ending with colon)
-    formatted = formatted.replace(/\b([A-Z][^.]*?):\s*([^.]*\.)/g, '\n\n**$1:**\n• $2');
+    // Extract restaurants from knowledge base entries
+    const restaurants: Array<{ name: string; location: string }> = [];
+    const seenRestaurants = new Set<string>();
     
-    // Step 4: Convert lists to proper bullet points
-    // Handle company names in lists
-    const companies = ['Avis', 'Hertz', 'Budget', 'Europcar', 'Sixt', 'Mark Rent a Car', 'Fast Rent a Car', 'United Car Rental'];
-    companies.forEach(company => {
-      const regex = new RegExp(`\\b${company}\\b`, 'g');
-      formatted = formatted.replace(regex, `\n• **${company}**`);
+    entries.slice(0, 8).forEach((entry) => {
+      const restaurantName = this.extractRestaurantName(entry.question);
+      if (restaurantName && !seenRestaurants.has(restaurantName)) {
+        seenRestaurants.add(restaurantName);
+        
+        // Extract simple location info
+        const answer = entry.answer.toLowerCase();
+        let location = 'Level 4';
+        if (answer.includes('arrivals')) location = 'Arrivals';
+        if (answer.includes('gate a')) location = 'Gate A';
+        if (answer.includes('gate b')) location = 'Gate B';
+        
+        restaurants.push({ name: restaurantName, location });
+      }
     });
     
-    // Step 5: Clean up formatting artifacts
-    formatted = formatted.replace(/\*\*\*+/g, '**'); // Fix triple asterisks
-    formatted = formatted.replace(/([.!?])\s*\n*\s*•/g, '$1\n\n•'); // Proper spacing before bullets
-    formatted = formatted.replace(/•\s*\*\*/g, '• **'); // Fix bullet + bold formatting
-    formatted = formatted.replace(/\*\*\s*•/g, '**\n• '); // Fix bold + bullet formatting
+    // Add coffee-specific places for coffee questions
+    if (questionLower.includes('coffee') && restaurants.length < 4) {
+      const coffeeShops = [
+        { name: 'Caffè Nero', location: 'Level 4' },
+        { name: 'Caribou Coffee', location: 'Gate A' },
+        { name: 'Tim Hortons', location: 'Level 4' }
+      ];
+      
+      coffeeShops.forEach(shop => {
+        if (!seenRestaurants.has(shop.name)) {
+          restaurants.push(shop);
+          seenRestaurants.add(shop.name);
+        }
+      });
+    }
     
-    // Step 6: Improve readability with proper line breaks
-    formatted = formatted.replace(/\.\s*([A-Z])/g, '.\n\n$1'); // Break after sentences
-    formatted = formatted.replace(/\n{3,}/g, '\n\n'); // Remove excessive line breaks
-    formatted = formatted.replace(/^\s*\n+/, ''); // Remove leading breaks
+    // Format as clean bullet points
+    restaurants.slice(0, 5).forEach((restaurant) => {
+      response += `• **${restaurant.name}** - ${restaurant.location}\n`;
+    });
     
-    // Step 7: Final cleanup
-    formatted = formatted.trim();
+    return response.trim();
+  }
+  
+  private createEnhancedSingleResponse(mainEntry: ScoredKnowledgeEntry, additionalEntries: ScoredKnowledgeEntry[]): string {
+    let response = this.cleanAndFormatAnswer(mainEntry.answer);
     
-    return formatted;
+    // Add related information if available
+    const relatedInfo = additionalEntries
+      .slice(0, 2)
+      .map(entry => this.cleanAndFormatAnswer(entry.answer))
+      .filter(info => info.length > 50 && !response.includes(info.substring(0, 30)));
+    
+    if (relatedInfo.length > 0) {
+      response += `\n\n**Additional Information:**\n${relatedInfo[0]}`;
+    }
+    
+    return response;
+  }
+  
+  private extractRestaurantName(question: string): string {
+    // Extract restaurant name from "What is [Restaurant Name]?" format
+    const match = question.match(/What is (.+?)\?/i);
+    if (match) {
+      return match[1]
+        .replace(/&amp;/g, '&')
+        .replace(/&egrave;/g, 'è')
+        .replace(/&eacute;/g, 'é');
+    }
+    return '';
+  }
+  
+  private extractRestaurantMentions(text: string): Array<{ name: string; description: string }> {
+    const restaurants: Array<{ name: string; description: string }> = [];
+    
+    // Common restaurant names at the airport
+    const knownRestaurants = [
+      'McDonald\'s', 'KFC', 'Tim Hortons', 'Caffè Nero', 'Spice Kitchen',
+      'Tickerdaze', 'Cakes&Bakes', 'Plenty', 'Noor', 'Luna'
+    ];
+    
+    knownRestaurants.forEach(name => {
+      if (text.includes(name)) {
+        // Get context around the restaurant name
+        const index = text.indexOf(name);
+        const contextStart = Math.max(0, index - 50);
+        const contextEnd = Math.min(text.length, index + name.length + 100);
+        const context = text.substring(contextStart, contextEnd).trim();
+        
+        restaurants.push({
+          name: name,
+          description: context.replace(name, '').trim()
+        });
+      }
+    });
+    
+    return restaurants;
+  }
+  
+  private cleanAndFormatAnswer(answer: string): string {
+    // Clean HTML entities and improve formatting
+    let cleaned = answer
+      .replace(/&amp;/g, '&')
+      .replace(/&egrave;/g, 'è')
+      .replace(/&eacute;/g, 'é')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Remove navigation/footer content
+    cleaned = cleaned.replace(/SHOP&DINE.*$/i, '').trim();
+    cleaned = cleaned.replace(/Pre-order Service.*$/i, '').trim();
+    
+    return cleaned;
   }
 
   private buildPrompt(message: string, context: string): string {
-    const systemPrompt = `You are a helpful AI assistant for Oman Airports. You provide accurate, specific information about:
-- Flight schedules and status
-- Airport services and facilities  
-- Transportation options (taxis, buses, car rentals)
-- Parking information and rates
-- Airport policies and procedures
-- Baggage handling and security
-- Dining and shopping options
+    const systemPrompt = `You are a helpful AI assistant for Muscat International Airport.
 
-FORMATTING GUIDELINES:
-- Use clear bullet points (•) for lists
-- Add line breaks between sections
-- Use emojis sparingly for better visual appeal (🚗 for cars, 🅿️ for parking, ✈️ for flights, 💰 for prices)
-- Structure information logically with headers when appropriate
-- Keep paragraphs short and scannable
-- Use bold formatting (**text**) for important information like prices and key details
+🎯 PROVIDE: Clear, contextual answers that consider conversation history.
 
-IMPORTANT: If specific information is provided in the knowledge base context below, use that exact information in your response. Include specific details like prices, zones, rates, and contact information when available.
+CONTEXT AWARENESS:
+- If user asks "more details" or "tell me more", refer to previous conversation
+- For follow-up questions, expand on previously mentioned topics
+- Maintain conversation continuity and remember what was discussed
 
-Format your response to be easy to read and scan quickly. Always prioritize accuracy over general guidance.`;
+FORMAT RULES:
+- Keep answers concise but complete
+- Use • for bullet points when listing items
+- Bold important names with **Name**
+- If user asks for more details, provide specific information about the topic`;
 
     if (context) {
-      return `${systemPrompt}\n\nContext: ${context}\n\nUser Question: ${message}\n\nResponse:`;
+      return `${systemPrompt}\n\n📚 CONTEXT & KNOWLEDGE:\n${context}\n\n❓ USER QUESTION: ${message}\n\n💬 YOUR CONTEXTUAL RESPONSE:`;
     }
     
-    return `${systemPrompt}\n\nUser Question: ${message}\n\nResponse:`;
+    return `${systemPrompt}\n\n❓ USER QUESTION: ${message}\n\n💬 YOUR RESPONSE:`;
   }
 
   private getFallbackResponse(message: string): string {
@@ -557,11 +873,25 @@ We're committed to providing excellent service!`,
         const resetAt = new Date(today);
         resetAt.setDate(resetAt.getDate() + 1); // Reset at midnight next day
 
+        // Get real quota limits for Gemini
+        let dailyLimit = 1000;
+        if (provider === 'gemini') {
+          try {
+            const realLimits = await this.getRealQuotaLimits();
+            dailyLimit = realLimits && realLimits.limits.requestsPerDay > 0 
+              ? realLimits.limits.requestsPerDay 
+              : 1000; // Free tier actual limit
+          } catch (error) {
+            console.warn('Could not get real quota limits, using default:', error);
+            dailyLimit = 1000;
+          }
+        }
+
         quotaRecord = await prisma.apiQuota.create({
           data: {
             provider,
             date: today,
-            dailyLimit: provider === 'gemini' ? 1500 : 1000, // Gemini free tier: 1500/day
+            dailyLimit,
             usedCount: 0,
             resetAt,
             isActive: true
@@ -591,13 +921,17 @@ We're committed to providing excellent service!`,
     }
   }
 
-  // Get current quota status
+  // Get current quota status with real Gemini limits
   async getQuotaStatus(provider: string): Promise<{
     dailyLimit: number;
     usedCount: number;
     remainingCount: number;
     resetAt: Date;
     percentageUsed: number;
+    quotaTier?: string;
+    model?: string;
+    rpmLimit?: number;
+    tpmLimit?: number;
   } | null> {
     try {
       const today = new Date();
@@ -612,17 +946,31 @@ We're committed to providing excellent service!`,
         }
       });
 
+      // Get real quota limits for Gemini
+      let realLimits = null;
+      if (provider === 'gemini') {
+        realLimits = await this.getRealQuotaLimits();
+      }
+
       if (!quotaRecord) {
         // Return default values if no record exists
         const resetAt = new Date(today);
         resetAt.setDate(resetAt.getDate() + 1);
         
+        const dailyLimit = provider === 'gemini' 
+          ? (realLimits && realLimits.limits.requestsPerDay > 0 ? realLimits.limits.requestsPerDay : 1000)
+          : 1000;
+        
         return {
-          dailyLimit: provider === 'gemini' ? 1500 : 1000,
+          dailyLimit,
           usedCount: 0,
-          remainingCount: provider === 'gemini' ? 1500 : 1000,
+          remainingCount: dailyLimit,
           resetAt,
-          percentageUsed: 0
+          percentageUsed: 0,
+          quotaTier: realLimits?.tier,
+          model: realLimits?.model,
+          rpmLimit: realLimits?.limits.requestsPerMinute,
+          tpmLimit: realLimits?.limits.tokensPerMinute
         };
       }
 
@@ -634,12 +982,45 @@ We're committed to providing excellent service!`,
         usedCount: quotaRecord.usedCount,
         remainingCount: Math.max(0, remainingCount),
         resetAt: quotaRecord.resetAt,
-        percentageUsed
+        percentageUsed,
+        quotaTier: realLimits?.tier,
+        model: realLimits?.model,
+        rpmLimit: realLimits?.limits.requestsPerMinute,
+        tpmLimit: realLimits?.limits.tokensPerMinute
       };
     } catch (error) {
       console.error('Error getting quota status:', error);
       return null;
     }
+  }
+
+  // Track RPM usage
+  private trackRpmUsage(provider: string): void {
+    const now = Date.now();
+    const currentMinute = Math.floor(now / 60000);
+    
+    if (!this.requestTracker.has(provider)) {
+      this.requestTracker.set(provider, []);
+    }
+    
+    const requests = this.requestTracker.get(provider)!;
+    requests.push(currentMinute);
+    
+    // Keep only requests from the last minute
+    const oneMinuteAgo = currentMinute - 1;
+    this.requestTracker.set(provider, requests.filter(time => time > oneMinuteAgo));
+  }
+
+  // Get current RPM usage
+  private getCurrentRpm(provider: string): number {
+    if (!this.requestTracker.has(provider)) return 0;
+    
+    const now = Date.now();
+    const currentMinute = Math.floor(now / 60000);
+    const requests = this.requestTracker.get(provider)!;
+    
+    // Count requests in current minute
+    return requests.filter(time => time === currentMinute).length;
   }
 
   // Get all providers quota status
@@ -648,10 +1029,97 @@ We're committed to providing excellent service!`,
     const quotaStatus: { [provider: string]: any } = {};
 
     for (const provider of providers) {
-      quotaStatus[provider] = await this.getQuotaStatus(provider);
+      const status = await this.getQuotaStatus(provider);
+      if (status && provider === 'gemini') {
+        // Add real-time RPM data
+        const currentRpm = this.getCurrentRpm(provider);
+        const rpmPercentage = status.rpmLimit ? Math.round((currentRpm / status.rpmLimit) * 100) : 0;
+        
+        quotaStatus[provider] = {
+          ...status,
+          currentRpm,
+          rpmPercentage,
+          isNearDailyLimit: status.percentageUsed >= 90,
+          isAtDailyLimit: status.percentageUsed >= 100,
+          isNearRpmLimit: rpmPercentage >= 90,
+          isAtRpmLimit: rpmPercentage >= 100
+        };
+      } else {
+        quotaStatus[provider] = status;
+      }
     }
 
     return quotaStatus;
+  }
+
+  // Method to detect quota tier (can be enhanced with API calls)
+  async detectQuotaTier(): Promise<'FREE_TIER' | 'TIER_1' | 'TIER_2' | 'TIER_3'> {
+    // This could be enhanced to:
+    // 1. Make a test API call to check rate limits
+    // 2. Check Google Cloud billing status
+    // 3. Use Google Cloud Quotas API
+    
+    // For now, return FREE_TIER
+    // TODO: Implement actual tier detection
+    return 'FREE_TIER';
+  }
+
+  // Get real-time quota information
+  async getRealQuotaLimits(): Promise<{
+    model: string;
+    tier: string;
+    limits: {
+      requestsPerMinute: number;
+      tokensPerMinute: number;
+      requestsPerDay: number;
+    };
+    description: string;
+  }> {
+    const tier = await this.detectQuotaTier();
+    
+    const QUOTA_TIERS = {
+      FREE_TIER: {
+        name: 'Free Tier',
+        requestsPerMinute: 15,
+        tokensPerMinute: 250000,
+        requestsPerDay: 1000,
+        description: 'Free tier for testing and development'
+      },
+      TIER_1: {
+        name: 'Tier 1 (Billing Enabled)',
+        requestsPerMinute: 4000,
+        tokensPerMinute: 4000000,
+        requestsPerDay: -1,
+        description: 'Billing account linked to project'
+      },
+      TIER_2: {
+        name: 'Tier 2 ($250+ spent)',
+        requestsPerMinute: 10000,
+        tokensPerMinute: 10000000,
+        requestsPerDay: 100000,
+        description: 'Total spend > $250 and at least 30 days since payment'
+      },
+      TIER_3: {
+        name: 'Tier 3 ($1000+ spent)',
+        requestsPerMinute: 30000,
+        tokensPerMinute: 30000000,
+        requestsPerDay: -1,
+        description: 'Total spend > $1,000 and at least 30 days since payment'
+      }
+    };
+
+    const currentTier = QUOTA_TIERS[tier];
+    
+    return {
+      model: 'gemini-2.5-flash-lite-preview-06-17',
+      tier: currentTier.name,
+      limits: {
+        requestsPerMinute: currentTier.requestsPerMinute,
+        tokensPerMinute: currentTier.tokensPerMinute,
+        requestsPerDay: currentTier.requestsPerDay
+      },
+      description: currentTier.description
+    };
   }
 }
 
