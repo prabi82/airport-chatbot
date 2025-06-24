@@ -168,6 +168,15 @@ export class AIService {
     // Try each provider in order
     for (const provider of this.providers) {
       try {
+        // Check quota before making API call
+        if (provider.name === 'gemini') {
+          const hasQuota = await this.checkAndUpdateQuota(provider.name);
+          if (!hasQuota) {
+            console.log('Gemini quota exceeded, trying next provider...');
+            continue;
+          }
+        }
+
         let response: string;
 
         switch (provider.name) {
@@ -413,6 +422,124 @@ Keep responses concise but informative. Always prioritize accuracy over general 
     }
     
     return status;
+  }
+
+  // Check and update API quota
+  private async checkAndUpdateQuota(provider: string): Promise<boolean> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Get today's quota record
+      let quotaRecord = await prisma.apiQuota.findUnique({
+        where: {
+          provider_date: {
+            provider,
+            date: today
+          }
+        }
+      });
+
+      // Create quota record if it doesn't exist
+      if (!quotaRecord) {
+        const resetAt = new Date(today);
+        resetAt.setDate(resetAt.getDate() + 1); // Reset at midnight next day
+
+        quotaRecord = await prisma.apiQuota.create({
+          data: {
+            provider,
+            date: today,
+            dailyLimit: provider === 'gemini' ? 1500 : 1000, // Gemini free tier: 1500/day
+            usedCount: 0,
+            resetAt,
+            isActive: true
+          }
+        });
+      }
+
+      // Check if quota is exceeded
+      if (quotaRecord.usedCount >= quotaRecord.dailyLimit) {
+        return false;
+      }
+
+      // Increment usage count
+      await prisma.apiQuota.update({
+        where: { id: quotaRecord.id },
+        data: {
+          usedCount: { increment: 1 },
+          updatedAt: new Date()
+        }
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error checking quota:', error);
+      // Return true to allow operation if there's a DB error
+      return true;
+    }
+  }
+
+  // Get current quota status
+  async getQuotaStatus(provider: string): Promise<{
+    dailyLimit: number;
+    usedCount: number;
+    remainingCount: number;
+    resetAt: Date;
+    percentageUsed: number;
+  } | null> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const quotaRecord = await prisma.apiQuota.findUnique({
+        where: {
+          provider_date: {
+            provider,
+            date: today
+          }
+        }
+      });
+
+      if (!quotaRecord) {
+        // Return default values if no record exists
+        const resetAt = new Date(today);
+        resetAt.setDate(resetAt.getDate() + 1);
+        
+        return {
+          dailyLimit: provider === 'gemini' ? 1500 : 1000,
+          usedCount: 0,
+          remainingCount: provider === 'gemini' ? 1500 : 1000,
+          resetAt,
+          percentageUsed: 0
+        };
+      }
+
+      const remainingCount = quotaRecord.dailyLimit - quotaRecord.usedCount;
+      const percentageUsed = Math.round((quotaRecord.usedCount / quotaRecord.dailyLimit) * 100);
+
+      return {
+        dailyLimit: quotaRecord.dailyLimit,
+        usedCount: quotaRecord.usedCount,
+        remainingCount: Math.max(0, remainingCount),
+        resetAt: quotaRecord.resetAt,
+        percentageUsed
+      };
+    } catch (error) {
+      console.error('Error getting quota status:', error);
+      return null;
+    }
+  }
+
+  // Get all providers quota status
+  async getAllQuotaStatus(): Promise<{ [provider: string]: any }> {
+    const providers = ['gemini', 'huggingface'];
+    const quotaStatus: { [provider: string]: any } = {};
+
+    for (const provider of providers) {
+      quotaStatus[provider] = await this.getQuotaStatus(provider);
+    }
+
+    return quotaStatus;
   }
 }
 

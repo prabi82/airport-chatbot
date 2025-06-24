@@ -197,4 +197,19 @@ model ChatAnalytics {
   
   @@unique([date])
   @@map("chat_analytics")
+}
+
+model ApiQuota {
+  id          String   @id @default(cuid())
+  provider    String   // gemini, huggingface, etc.
+  date        DateTime @db.Date
+  dailyLimit  Int      @default(1500) // Default limit for Gemini free tier
+  usedCount   Int      @default(0)
+  resetAt     DateTime // When the quota resets (usually midnight UTC)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([provider, date])
+  @@map("api_quota")
 } 

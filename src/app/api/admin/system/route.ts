@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminService } from '@/lib/admin-service';
+import { aiService } from '@/lib/ai-service';
 
 // Get System Information
 export async function GET(request: NextRequest) {
@@ -26,9 +27,10 @@ export async function GET(request: NextRequest) {
 
       default:
         // Return general system info
-        const [health2, config2] = await Promise.all([
+        const [health2, config2, quotaStatus] = await Promise.all([
           adminService.getSystemHealth(),
-          adminService.getSystemConfig()
+          adminService.getSystemConfig(),
+          aiService.getAllQuotaStatus()
         ]);
 
         return NextResponse.json({
@@ -38,7 +40,8 @@ export async function GET(request: NextRequest) {
             config: config2,
             version: '1.0.0',
             uptime: process.uptime(),
-            environment: process.env.NODE_ENV || 'development'
+            environment: process.env.NODE_ENV || 'development',
+            apiQuotas: quotaStatus
           }
         });
     }

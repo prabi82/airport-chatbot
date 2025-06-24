@@ -10,6 +10,14 @@ interface SystemHealth {
   scraper: boolean;
 }
 
+interface QuotaStatus {
+  dailyLimit: number;
+  usedCount: number;
+  remainingCount: number;
+  resetAt: string;
+  percentageUsed: number;
+}
+
 interface Analytics {
   totalSessions: number;
   totalMessages: number;
@@ -58,6 +66,7 @@ export default function AdminDashboard() {
   const [scrapingHistory, setScrapingHistory] = useState<{ title: string; url: string; lastScraped: string }[]>([]);
   const [knowledgeStats, setKnowledgeStats] = useState<{ category: string; count: number }[]>([]);
   const [totalKnowledgeEntries, setTotalKnowledgeEntries] = useState(0);
+  const [apiQuotas, setApiQuotas] = useState<{ [provider: string]: QuotaStatus }>({});
 
   useEffect(() => {
     checkAuthentication();
@@ -111,6 +120,11 @@ export default function AdminDashboard() {
           ai: healthData.aiService === 'healthy',
           scraper: healthData.webScraper === 'healthy'
         });
+
+        // Update API quotas if available
+        if (data.system?.apiQuotas) {
+          setApiQuotas(data.system.apiQuotas);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch system health:', error);
@@ -481,6 +495,110 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* API Quota Section */}
+              {apiQuotas.gemini && (
+                <div className="bg-white shadow rounded-lg">
+                  <div className="px-4 py-5 sm:p-6">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">🤖 AI API Quota Status</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-blue-900">Google Gemini API</h4>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            apiQuotas.gemini.percentageUsed > 90 ? 'bg-red-100 text-red-800' :
+                            apiQuotas.gemini.percentageUsed > 70 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {apiQuotas.gemini.percentageUsed}% used
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Daily Limit:</span>
+                            <span className="font-medium text-gray-900">{apiQuotas.gemini.dailyLimit}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Used Today:</span>
+                            <span className="font-medium text-gray-900">{apiQuotas.gemini.usedCount}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Remaining:</span>
+                            <span className={`font-bold ${
+                              apiQuotas.gemini.remainingCount < 100 ? 'text-red-600' :
+                              apiQuotas.gemini.remainingCount < 300 ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
+                              {apiQuotas.gemini.remainingCount}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                apiQuotas.gemini.percentageUsed > 90 ? 'bg-red-500' :
+                                apiQuotas.gemini.percentageUsed > 70 ? 'bg-yellow-500' :
+                                'bg-green-500'
+                              }`}
+                              style={{ width: `${apiQuotas.gemini.percentageUsed}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Resets at: {new Date(apiQuotas.gemini.resetAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {apiQuotas.huggingface && (
+                        <div className="bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-lg border border-orange-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-orange-900">Hugging Face API</h4>
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              apiQuotas.huggingface.percentageUsed > 90 ? 'bg-red-100 text-red-800' :
+                              apiQuotas.huggingface.percentageUsed > 70 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {apiQuotas.huggingface.percentageUsed}% used
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Daily Limit:</span>
+                              <span className="font-medium text-gray-900">{apiQuotas.huggingface.dailyLimit}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Used Today:</span>
+                              <span className="font-medium text-gray-900">{apiQuotas.huggingface.usedCount}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Remaining:</span>
+                              <span className={`font-bold ${
+                                apiQuotas.huggingface.remainingCount < 50 ? 'text-red-600' :
+                                apiQuotas.huggingface.remainingCount < 200 ? 'text-yellow-600' :
+                                'text-green-600'
+                              }`}>
+                                {apiQuotas.huggingface.remainingCount}
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                              <div 
+                                className={`h-2 rounded-full transition-all duration-300 ${
+                                  apiQuotas.huggingface.percentageUsed > 90 ? 'bg-red-500' :
+                                  apiQuotas.huggingface.percentageUsed > 70 ? 'bg-yellow-500' :
+                                  'bg-green-500'
+                                }`}
+                                style={{ width: `${apiQuotas.huggingface.percentageUsed}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Resets at: {new Date(apiQuotas.huggingface.resetAt).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* System Health */}
               <div className="bg-white shadow rounded-lg">
