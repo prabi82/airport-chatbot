@@ -1,0 +1,44 @@
+# Development files
+*.zip
+*.rar
+*.tar.gz
+
+# Test files
+test-*.js
+test-*.html
+check-*.js
+demonstrate-*.js
+view-*.js
+
+# Documentation (keep essential docs only)
+TROUBLESHOOTING.md
+DEMO_GUIDE.md
+PHASE_*.md
+BELOW_PAR_*.md
+CONCISE_*.md
+UNSATISFACTORY_*.md
+UNIVERSAL_*.md
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Log files
+*.log
+logs/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup 
