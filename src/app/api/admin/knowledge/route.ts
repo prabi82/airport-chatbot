@@ -12,8 +12,38 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const limit = parseInt(searchParams.get('limit') || '50');
     
+    // Build where clause for filtering
+    const where: any = { isActive: true };
+    if (category) where.category = category;
+    if (search) {
+      where.OR = [
+        { question: { contains: search, mode: 'insensitive' } },
+        { answer: { contains: search, mode: 'insensitive' } },
+        { keywords: { has: search } }
+      ];
+    }
+    
     // Get knowledge base entries
-    const entries = await adminService.getKnowledgeBase(category || undefined, search || undefined);
+    const entries = await prisma.knowledgeBase.findMany({
+      where,
+      select: {
+        id: true,
+        category: true,
+        subcategory: true,
+        question: true,
+        answer: true,
+        keywords: true,
+        sourceUrl: true,
+        dataSource: true,
+        priority: true,
+        updatedAt: true
+      },
+      orderBy: [
+        { priority: 'desc' },
+        { updatedAt: 'desc' }
+      ],
+      take: limit
+    });
     
     // Get category statistics
     const stats = await prisma.knowledgeBase.groupBy({
@@ -31,8 +61,11 @@ export async function GET(request: NextRequest) {
       where: { isActive: true }
     });
 
+    // Skip hit counts for now - can be implemented later when chat messages exist
+    const countMap: Record<string, number> = {};
+
     // Format entries for frontend
-    const formattedEntries = entries.slice(0, limit).map(entry => ({
+    const formattedEntries = entries.map(entry => ({
       id: entry.id,
       question: entry.question,
       answer: entry.answer,
@@ -40,8 +73,10 @@ export async function GET(request: NextRequest) {
       subcategory: entry.subcategory,
       priority: entry.priority,
       sourceUrl: entry.sourceUrl,
+      dataSource: entry.dataSource || 'manual',
       lastUpdated: entry.updatedAt.toISOString(),
-      keywords: entry.keywords
+      keywords: entry.keywords,
+      hits: countMap[entry.id] || 0
     }));
 
     return NextResponse.json({
@@ -55,7 +90,7 @@ export async function GET(request: NextRequest) {
       pagination: {
         total: entries.length,
         limit,
-        hasMore: entries.length > limit
+        hasMore: entries.length >= limit
       }
     });
 
@@ -72,7 +107,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { category, subcategory, question, answer, keywords, priority, sourceUrl } = body;
+    const { category, subcategory, question, answer, keywords, priority, sourceUrl, dataSource } = body;
 
     // Validate required fields
     if (!category || !question || !answer) {
@@ -89,20 +124,22 @@ export async function POST(request: NextRequest) {
       question,
       answer,
       keywords: keywords || [],
-      priority: priority || 1
+      priority: priority || 1,
+      sourceUrl,
+      dataSource: dataSource || 'manual'
     });
 
     if (entry) {
-      return NextResponse.json({
-        success: true,
-        message: 'Knowledge entry created successfully',
+    return NextResponse.json({
+      success: true,
+      message: 'Knowledge entry created successfully',
         data: {
           id: entry.id,
           category: entry.category,
           question: entry.question,
           answer: entry.answer
         }
-      });
+    });
     } else {
       return NextResponse.json(
         { success: false, error: 'Failed to create knowledge entry' },
@@ -123,7 +160,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, category, subcategory, question, answer, keywords, priority, isActive } = body;
+    const { id, category, subcategory, question, answer, keywords, priority, sourceUrl, dataSource, isActive } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -139,15 +176,17 @@ export async function PUT(request: NextRequest) {
       answer,
       keywords,
       priority,
+      sourceUrl,
+      dataSource,
       isActive
     });
 
     if (entry) {
-      return NextResponse.json({
-        success: true,
-        message: 'Knowledge entry updated successfully',
-        data: entry
-      });
+    return NextResponse.json({
+      success: true,
+      message: 'Knowledge entry updated successfully',
+      data: entry
+    });
     } else {
       return NextResponse.json(
         { success: false, error: 'Failed to update knowledge entry' },
@@ -180,10 +219,10 @@ export async function DELETE(request: NextRequest) {
     const success = await adminService.deleteKnowledgeEntry(id);
 
     if (success) {
-      return NextResponse.json({
-        success: true,
-        message: 'Knowledge entry deleted successfully'
-      });
+    return NextResponse.json({
+      success: true,
+      message: 'Knowledge entry deleted successfully'
+    });
     } else {
       return NextResponse.json(
         { success: false, error: 'Failed to delete knowledge entry' },
@@ -193,6 +232,35 @@ export async function DELETE(request: NextRequest) {
 
   } catch (error) {
     console.error('Knowledge DELETE error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH - Bulk delete knowledge base entries
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { ids } = body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'ids array is required' },
+        { status: 400 }
+      );
+    }
+
+    const deletedCount = await adminService.deleteKnowledgeEntries(ids);
+
+    return NextResponse.json({
+      success: true,
+      message: `Deleted ${deletedCount} entries successfully`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('Knowledge PATCH bulk delete error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

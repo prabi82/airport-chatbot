@@ -2,6 +2,7 @@
 // Supports multiple AI providers with free tiers
 
 import { prisma } from './database';
+import { getRelevantKnowledgeEntries } from './rag-service';
 
 interface AIResponse {
   message: string;
@@ -10,6 +11,7 @@ interface AIResponse {
   processingTime: number;
   knowledgeBaseUsed?: boolean;
   sources?: string[];
+  kbEntryId?: string;
 }
 
 interface AIProvider {
@@ -81,8 +83,52 @@ export class AIService {
     });
   }
 
+  // Check if a question is related to airports/travel
+  private isAirportRelatedQuestion(message: string): boolean {
+    const lowerMessage = message.toLowerCase();
+    
+    // Airport-related keywords
+    const airportKeywords = [
+      'airport', 'terminal', 'flight', 'boarding', 'gate', 'departure', 'arrival',
+      'check-in', 'baggage', 'luggage', 'security', 'customs', 'immigration',
+      'taxi', 'transport', 'bus', 'parking', 'car rental', 'rental car',
+      'dining', 'restaurant', 'food', 'coffee', 'shop', 'shopping', 'store',
+      'lounge', 'wifi', 'internet', 'currency', 'exchange', 'atm', 'bank',
+      'pharmacy', 'medical', 'hotel', 'accommodation', 'travel', 'trip',
+      'muscat', 'oman', 'mct', 'omanairports', 'visa', 'passport'
+    ];
+    
+    // Service-related keywords that are likely airport questions
+    const serviceKeywords = [
+      'where can i', 'how do i', 'what time', 'is there', 'are there',
+      'can i find', 'available', 'open', 'hours', 'cost', 'price', 'fee'
+    ];
+    
+    // Check for airport keywords
+    const hasAirportKeywords = airportKeywords.some(keyword => 
+      lowerMessage.includes(keyword)
+    );
+    
+    // Check for service questions that might be airport-related
+    const hasServiceKeywords = serviceKeywords.some(keyword => 
+      lowerMessage.includes(keyword)
+    );
+    
+    return hasAirportKeywords || hasServiceKeywords;
+  }
+
   // Enhanced knowledge base search
   async searchKnowledgeBase(query: string): Promise<ScoredKnowledgeEntry[]> {
+    // First attempt semantic vector search via pgvector
+    try {
+      const vectorMatches = await getRelevantKnowledgeEntries(query, 8);
+      if (vectorMatches && vectorMatches.length > 0) {
+        return vectorMatches as ScoredKnowledgeEntry[];
+      }
+    } catch (err) {
+      console.error('[AIService] Vector search failed, falling back to keyword search:', err);
+    }
+
     try {
       // Extract meaningful keywords (excluding common words and location terms)
       const stopWords = ['what', 'is', 'are', 'the', 'at', 'in', 'on', 'and', 'or', 'for', 'with', 'by', 'to', 'from', 'of', 'a', 'an', 'airport', 'airports', 'muscat', 'oman'];
@@ -152,24 +198,24 @@ export class AIService {
           if (['dining', 'options', 'available', 'find', 'where', 'shops', 'bakeries', 'dessert', 'bakery'].includes(keyword)) {
             score += 20; // Major boost for actual restaurant content
           }
-        }
-        
+          }
+          
         // Boost for bakery/dessert queries
         if (['bakery', 'bakeries', 'dessert', 'cake', 'cakes', 'baked'].includes(keyword)) {
           if (questionText.includes('cake') || answerText.includes('cake') || 
               answerText.includes('baked') || answerText.includes('dessert')) {
             score += 25; // Major boost for bakery/dessert content
           }
-        }
-        
+          }
+          
         // Special boost for coffee/cafe related queries
         if (['coffee', 'cafe'].includes(keyword)) {
           if (questionText.includes('coffee') || answerText.includes('coffee') || 
               questionText.includes('cafe') || answerText.includes('cafe')) {
             score += 25; // Major boost for coffee-specific content
           }
-        }
-        
+          }
+          
         // Boost for Arabic/Middle Eastern queries
         if (['arabic', 'middle', 'eastern', 'levant', 'turkish'].includes(keyword)) {
           if (questionText.includes('noor') || answerText.includes('noor') || 
@@ -229,14 +275,14 @@ export class AIService {
             score += 35; // Major boost for food court content
           }
         }
-        
+
         // Boost for children's meals queries
         if (['children', 'kids', 'meals', 'cater'].includes(keyword)) {
           if (questionText.includes('children') || answerText.includes('children') || 
               answerText.includes('family-friendly') || answerText.includes('kid-friendly')) {
             score += 35; // Major boost for children's meals content
+            }
           }
-        }
         
         // Boost for business meeting queries
         if (['business', 'meeting', 'best', 'professional'].includes(keyword)) {
@@ -246,7 +292,7 @@ export class AIService {
             score += 35; // Major boost for business meeting content
           }
         }
-        
+
         // Boost for 24/7 and hours queries
         if (['24/7', 'hours', 'operating', 'open'].includes(keyword)) {
           if (questionText.includes('24') || questionText.includes('hours') || 
@@ -271,11 +317,8 @@ export class AIService {
         } as ScoredKnowledgeEntry;
       });
 
-      // Filter and sort by relevance
-      return scoredEntries
-        .filter(entry => entry.relevanceScore > 0)
-        .sort((a, b) => b.relevanceScore - a.relevanceScore)
-        .slice(0, 10); // Top 10 most relevant entries - Gemini can handle much more context!
+      const filtered = scoredEntries.filter(e => e.relevanceScore >= 20);
+      return filtered.sort((a, b) => b.relevanceScore - a.relevanceScore).slice(0, 8);
 
     } catch (error) {
       console.error('Error searching knowledge base:', error);
@@ -294,6 +337,12 @@ export class AIService {
     const knowledgeEntries = await this.searchKnowledgeBase(message);
     let knowledgeContext = '';
     let sources: string[] = [];
+
+    // Check if this is an airport-related question
+    const isAirportRelated = this.isAirportRelatedQuestion(message);
+    
+    // Determine if we have strong knowledge base matches
+    const hasStrongKnowledgeMatch = knowledgeEntries.length > 0 && knowledgeEntries[0].relevanceScore > 15;
 
     if (knowledgeEntries.length > 0) {
       knowledgeContext = '\n\nRelevant Information from Knowledge Base:\n';
@@ -339,7 +388,8 @@ export class AIService {
         provider: 'enhanced-knowledge-base',
         processingTime,
         knowledgeBaseUsed: true,
-        sources: [...new Set(sources)]
+        sources: [...new Set(sources)],
+        kbEntryId: knowledgeEntries.length > 0 ? knowledgeEntries[0].id : undefined
       };
     }
 
@@ -375,13 +425,21 @@ export class AIService {
         }
 
         const processingTime = Date.now() - startTime;
+        
+        // Determine if this should be marked as needing knowledge base review
+        // Mark as not using KB if:
+        // 1. No knowledge entries found, OR
+        // 2. Airport-related question but no strong knowledge match (weak relevance)
+        const shouldMarkAsNeedsReview = !hasStrongKnowledgeMatch && isAirportRelated;
+        
         return {
           message: this.formatResponse(response),
           success: true,
           provider: provider.name,
           processingTime,
-          knowledgeBaseUsed: knowledgeEntries.length > 0,
-          sources: [...new Set(sources)] // Remove duplicates
+          knowledgeBaseUsed: hasStrongKnowledgeMatch,
+          sources: [...new Set(sources)], // Remove duplicates
+          kbEntryId: knowledgeEntries.length > 0 ? knowledgeEntries[0].id : undefined
         };
 
       } catch (error) {
@@ -405,8 +463,9 @@ export class AIService {
         success: true,
         provider: 'enhanced-knowledge-base',
         processingTime,
-        knowledgeBaseUsed: true,
-        sources: [...new Set(sources)]
+        knowledgeBaseUsed: hasStrongKnowledgeMatch,
+        sources: [...new Set(sources)],
+        kbEntryId: knowledgeEntries.length > 0 ? knowledgeEntries[0].id : undefined
       };
     }
 
@@ -417,8 +476,9 @@ export class AIService {
       success: false,
       provider: 'fallback',
       processingTime,
-      knowledgeBaseUsed: false,
-      sources: []
+      knowledgeBaseUsed: false, // Always false for fallback responses
+      sources: [],
+      kbEntryId: undefined
     };
   }
 
@@ -535,28 +595,22 @@ export class AIService {
 
   // Format AI responses for better readability and conciseness
   private formatResponse(response: string): string {
-    let formatted = response.trim();
+    let text = response.trim();
     
-    // Step 1: Clean encoding issues
-    formatted = formatted.replace(/Γ[^a-zA-Z\s]*/g, ''); // Remove encoding artifacts
-    formatted = formatted.replace(/├¿/g, 'è'); // Fix accented characters
-    
-    // Step 2: Fix malformed bold formatting
-    formatted = formatted.replace(/\*{3,}/g, '**'); // Fix multiple asterisks
-    formatted = formatted.replace(/\*\*([^*]+)\*/g, '**$1**'); // Fix incomplete bold tags
-    formatted = formatted.replace(/\*([^*\n]+)\*\*([^*\n]*)/g, '**$1**$2'); // Fix mismatched asterisks
-    formatted = formatted.replace(/\*\*\s*\*\*/g, ''); // Remove empty bold tags
-    
-    // Step 3: Fix bullet points and line breaks properly
-    formatted = formatted.replace(/\s*[\*\-\+]\s+/g, '\n• '); // Convert bullets to • with newlines
-    formatted = formatted.replace(/([:\.])\s*\n•/g, '$1\n• '); // Proper spacing after colons/periods
-    
-    // Step 4: Clean up whitespace and structure
-    formatted = formatted.replace(/\n{3,}/g, '\n\n'); // Max 2 line breaks
-    formatted = formatted.replace(/\n•\s+/g, '\n• '); // Normalize bullet spacing
-    formatted = formatted.replace(/^\n+|\n+$/g, ''); // Remove leading/trailing breaks
-    
-    return formatted.trim();
+    // 1. Ensure bullet points have a space after the symbol
+    text = text.replace(/•\s*/g, '• ');
+
+    // 2. Convert Gemini's triple-asterisk artefacts ***Title** → **Title**
+    text = text.replace(/\*\*\*([^\*]+)\*\*/g, '**$1**');
+
+    // 3. Fix unmatched bold markers like **Heading:** → **Heading:**
+    // Already fine but ensure trailing ** after colon isn't doubled
+    text = text.replace(/\*\*([^\*]+):\*\*/g, '**$1:**');
+
+    // 4. Collapse excessive blank lines
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    return text;
   }
 
   // Create comprehensive response using multiple knowledge entries
@@ -566,15 +620,17 @@ export class AIService {
   ): string {
     const questionLower = userQuestion.toLowerCase();
     
-    // Determine response type based on question
-    const isListingQuestion = questionLower.includes('what') || 
-                             questionLower.includes('dining options') || 
-                             questionLower.includes('restaurants') ||
-                             questionLower.includes('available') ||
-                             questionLower.includes('coffee') ||
-                             questionLower.includes('where can i get') ||
-                             questionLower.includes('dining') ||
-                             questionLower.includes('food');
+    // Determine response type based on question (only for dining/restaurant lists)
+    const isListingQuestion = (questionLower.includes('dining options') || 
+                              questionLower.includes('restaurants') ||
+                              questionLower.includes('coffee') ||
+                              questionLower.includes('where can i get coffee') ||
+                              questionLower.includes('dining') ||
+                              questionLower.includes('food options')) && 
+                              !questionLower.includes('rates') && 
+                              !questionLower.includes('cost') && 
+                              !questionLower.includes('price') &&
+                              !questionLower.includes('how much');
     
     if (isListingQuestion && knowledgeEntries.length > 1) {
       // Create comprehensive listing response

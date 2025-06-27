@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { KnowledgeItem } from '@/types';
 
 interface SystemHealth {
   database: boolean;
@@ -39,19 +40,11 @@ interface Analytics {
   responseAccuracy: number;
 }
 
-interface KnowledgeItem {
-  id: string;
-  question: string;
-  answer: string;
-  category: string;
-  subcategory?: string;
-  priority?: number;
-  sourceUrl?: string;
-  lastUpdated: string;
-}
+
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState('overview');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -80,6 +73,41 @@ export default function AdminDashboard() {
   const [totalKnowledgeEntries, setTotalKnowledgeEntries] = useState(0);
   const [apiQuotas, setApiQuotas] = useState<{ [provider: string]: QuotaStatus }>({});
   const [quotaAlerts, setQuotaAlerts] = useState<string[]>([]);
+  const [editingEntry, setEditingEntry] = useState<KnowledgeItem | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editForm, setEditForm] = useState({
+    question: '',
+    answer: '',
+    category: '',
+    subcategory: '',
+    priority: 1,
+    sourceUrl: '',
+    dataSource: 'manual' as 'manual' | 'scraping' | 'import'
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [entriesPerPage] = useState(15);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Category management state
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [categories, setCategories] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    icon?: string;
+    isActive: boolean;
+    order: number;
+    entryCount: number;
+    createdAt: string;
+  }>>([]);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    description: '',
+    icon: ''
+  });
 
   useEffect(() => {
     checkAuthentication();
@@ -100,6 +128,13 @@ export default function AdminDashboard() {
       return () => clearInterval(interval);
     }
   }, [isAuthenticated]);
+
+  // refetch knowledge when tab switched to knowledge
+  useEffect(() => {
+    if (activeTab === 'knowledge') {
+      fetchKnowledgeBase();
+    }
+  }, [activeTab]);
 
   const checkAuthentication = async () => {
     try {
@@ -259,11 +294,55 @@ export default function AdminDashboard() {
     }
   };
 
-  const filteredKnowledge = knowledgeBase.filter(item =>
-    item.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.answer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  let filteredKnowledge = knowledgeBase.filter(item => {
+    const matchesCategory = selectedCategoryFilter ? item.category === selectedCategoryFilter : true;
+    const matchesSearch = item.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.answer.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  // Auto-reset category filter if it hides all entries
+  if (selectedCategoryFilter && filteredKnowledge.length === 0 && knowledgeBase.length > 0) {
+    setSelectedCategoryFilter('');
+    filteredKnowledge = knowledgeBase.filter(item => item.question.toLowerCase().includes(searchTerm.toLowerCase()) || item.answer.toLowerCase().includes(searchTerm.toLowerCase()));
+  }
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredKnowledge.length / entriesPerPage);
+  const startIndex = (currentPage - 1) * entriesPerPage;
+  const endIndex = startIndex + entriesPerPage;
+  const currentPageItems = filteredKnowledge.slice(startIndex, endIndex);
+
+  // Reset to first page when search term or category filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategoryFilter]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handleCategoryFilter = (category: string) => {
+    setSelectedCategoryFilter(category);
+    setActiveTab('knowledge'); // Switch to knowledge tab to show filtered results
+  };
+
+  const handleClearFilters = () => {
+    setSelectedCategoryFilter('');
+    setSearchTerm('');
+  };
 
   const handleScrapeWebsite = async () => {
     if (!scrapeUrl.trim()) {
@@ -403,6 +482,294 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleEditKnowledgeEntry = (item: KnowledgeItem) => {
+    setEditingEntry(item);
+    setEditForm({
+      question: item.question,
+      answer: item.answer,
+      category: item.category,
+      subcategory: item.subcategory || '',
+      priority: item.priority || 1,
+      sourceUrl: item.sourceUrl || '',
+      dataSource: item.dataSource || 'manual'
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEntry(null);
+    setShowCreateForm(false);
+    setEditForm({
+      question: '',
+      answer: '',
+      category: '',
+      subcategory: '',
+      priority: 1,
+      sourceUrl: '',
+      dataSource: 'manual'
+    });
+  };
+
+  const handleCreateNew = () => {
+    setShowCreateForm(true);
+    setEditForm({
+      question: '',
+      answer: '',
+      category: '',
+      subcategory: '',
+      priority: 1,
+      sourceUrl: '',
+      dataSource: 'manual'
+    });
+  };
+
+  const handleSaveNew = async () => {
+    try {
+      const response = await fetch('/api/admin/knowledge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+                  body: JSON.stringify({
+            question: editForm.question,
+            answer: editForm.answer,
+            category: editForm.category,
+            subcategory: editForm.subcategory || null,
+            priority: editForm.priority,
+            sourceUrl: editForm.sourceUrl || null,
+            dataSource: editForm.dataSource
+          })
+      });
+      
+      if (response.ok) {
+        // Refresh knowledge base
+        await fetchKnowledgeBase();
+        setScrapingStatus('success');
+        setScrapingMessage('Knowledge entry created successfully');
+        handleCancelEdit();
+      } else {
+        const errorData = await response.json();
+        setScrapingStatus('error');
+        setScrapingMessage(errorData.error || 'Failed to create knowledge entry');
+      }
+    } catch (error) {
+      console.error('Failed to create knowledge entry:', error);
+      setScrapingStatus('error');
+      setScrapingMessage('An error occurred while creating the entry.');
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEntry) return;
+
+    try {
+      const response = await fetch('/api/admin/knowledge', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+                  body: JSON.stringify({
+            id: editingEntry.id,
+            question: editForm.question,
+            answer: editForm.answer,
+            category: editForm.category,
+            subcategory: editForm.subcategory || null,
+            priority: editForm.priority,
+            sourceUrl: editForm.sourceUrl || null,
+            dataSource: editForm.dataSource,
+            isActive: true
+          })
+      });
+      
+      if (response.ok) {
+        // Refresh knowledge base
+        await fetchKnowledgeBase();
+        setScrapingStatus('success');
+        setScrapingMessage('Knowledge entry updated successfully');
+        handleCancelEdit();
+      } else {
+        const errorData = await response.json();
+        setScrapingStatus('error');
+        setScrapingMessage(errorData.error || 'Failed to update knowledge entry');
+      }
+    } catch (error) {
+      console.error('Failed to update knowledge entry:', error);
+      setScrapingStatus('error');
+      setScrapingMessage('An error occurred while updating the entry.');
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selectedIds.length} selected entries? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch('/api/admin/knowledge', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setScrapingStatus('success');
+        setScrapingMessage(data.message);
+        setSelectedIds([]);
+        await fetchKnowledgeBase();
+      } else {
+        setScrapingStatus('error');
+        setScrapingMessage(data.error || 'Failed to delete entries');
+      }
+    } catch (err) {
+      console.error('Bulk delete error', err);
+      setScrapingStatus('error');
+      setScrapingMessage('An error occurred while deleting entries');
+    }
+  };
+
+  // Category Management Functions
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/admin/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      setScrapingStatus('error');
+      setScrapingMessage('Category name is required');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(categoryForm)
+      });
+      
+      if (response.ok) {
+        setScrapingStatus('success');
+        setScrapingMessage('Category created successfully');
+        setCategoryForm({ name: '', description: '', icon: '' });
+        setShowCreateCategory(false);
+        await fetchCategories();
+      } else {
+        const data = await response.json();
+        setScrapingStatus('error');
+        setScrapingMessage(data.error || 'Failed to create category');
+      }
+    } catch (error) {
+      console.error('Failed to create category:', error);
+      setScrapingStatus('error');
+      setScrapingMessage('An error occurred while creating the category');
+    }
+  };
+
+  const handleEditCategory = (category: any) => {
+    setEditingCategory(category);
+    setCategoryForm({
+      name: category.name,
+      description: category.description || '',
+      icon: category.icon || ''
+    });
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      setScrapingStatus('error');
+      setScrapingMessage('Category name is required');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/categories', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: editingCategory.id,
+          ...categoryForm
+        })
+      });
+      
+      if (response.ok) {
+        setScrapingStatus('success');
+        setScrapingMessage('Category updated successfully');
+        setCategoryForm({ name: '', description: '', icon: '' });
+        setEditingCategory(null);
+        await fetchCategories();
+      } else {
+        const data = await response.json();
+        setScrapingStatus('error');
+        setScrapingMessage(data.error || 'Failed to update category');
+      }
+    } catch (error) {
+      console.error('Failed to update category:', error);
+      setScrapingStatus('error');
+      setScrapingMessage('An error occurred while updating the category');
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    if (!confirm(`Delete category "${categoryName}"? This will update all entries in this category to "Uncategorized".`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/categories', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: categoryId })
+      });
+      
+      if (response.ok) {
+        setScrapingStatus('success');
+        setScrapingMessage('Category deleted successfully');
+        await fetchCategories();
+        await fetchKnowledgeBase(); // Refresh knowledge base to reflect changes
+      } else {
+        const data = await response.json();
+        setScrapingStatus('error');
+        setScrapingMessage(data.error || 'Failed to delete category');
+      }
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      setScrapingStatus('error');
+      setScrapingMessage('An error occurred while deleting the category');
+    }
+  };
+
+  const handleCancelCategoryEdit = () => {
+    setEditingCategory(null);
+    setShowCreateCategory(false);
+    setCategoryForm({ name: '', description: '', icon: '' });
+  };
+
+  // Fetch categories when category manager is opened
+  useEffect(() => {
+    if (showCategoryManager) {
+      fetchCategories();
+    }
+  }, [showCategoryManager]);
+
+  // Fetch categories on component mount for dropdowns
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -449,20 +816,33 @@ export default function AdminDashboard() {
               { id: 'analytics', name: 'Analytics' },
               { id: 'knowledge', name: 'Knowledge Base' },
               { id: 'agents', name: 'Agents' },
-              { id: 'system', name: 'System' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.name}
-              </button>
-            ))}
+              { id: 'system', name: 'System' },
+              { id: 'unanswered', name: 'Unanswered' }
+            ].map((tab) => {
+              const isActive = tab.id === 'unanswered' 
+                ? pathname === '/admin/unanswered'
+                : activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    if (tab.id === 'unanswered') {
+                      router.push('/admin/unanswered');
+                    } else {
+                      setActiveTab(tab.id);
+                    }
+                  }}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    isActive
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {tab.name}
+                </button>
+              );
+            })}
           </nav>
         </div>
       </div>
@@ -869,13 +1249,11 @@ export default function AdminDashboard() {
                           className="mt-1 block w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Auto-detect category</option>
-                          <option value="flights">Flights</option>
-                          <option value="transportation">Transportation</option>
-                          <option value="parking">Parking</option>
-                          <option value="services">Services</option>
-                          <option value="amenities">Amenities</option>
-                          <option value="security">Security</option>
-                          <option value="general">General</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.name.toLowerCase()}>
+                              {category.name}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div className="flex space-x-3">
@@ -962,25 +1340,237 @@ export default function AdminDashboard() {
                     <h4 className="text-md font-medium text-gray-900 mb-3">📈 Knowledge Base Statistics</h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {knowledgeStats.map((stat, index) => (
-                        <div key={index} className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white">
+                        <button
+                          key={index}
+                          onClick={() => handleCategoryFilter(stat.category)}
+                          className={`bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white text-left hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl ${
+                            selectedCategoryFilter.toLowerCase() === stat.category.toLowerCase() 
+                              ? 'ring-4 ring-yellow-300 ring-opacity-75' 
+                              : ''
+                          }`}
+                        >
                           <div className="text-2xl font-bold">{stat.count}</div>
                           <div className="text-sm opacity-90 capitalize">{stat.category}</div>
-                        </div>
+                          <div className="text-xs opacity-75 mt-1">Click to filter</div>
+                        </button>
                       ))}
-                      <div className="bg-gradient-to-r from-green-500 to-blue-500 rounded-lg p-4 text-white">
+                      <button
+                        onClick={() => {
+                          setSelectedCategoryFilter('');
+                          setActiveTab('knowledge');
+                        }}
+                        className="bg-gradient-to-r from-green-500 to-blue-500 rounded-lg p-4 text-white text-left hover:from-green-600 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                      >
                         <div className="text-2xl font-bold">{totalKnowledgeEntries}</div>
                         <div className="text-sm opacity-90">Total Entries</div>
-                      </div>
+                        <div className="text-xs opacity-75 mt-1">Click to show all</div>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
 
+              {/* Edit/Create Knowledge Entry Modal */}
+              {(editingEntry || showCreateForm) && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                  <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                    <div className="mt-3">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium text-gray-900">
+                          {editingEntry ? '✏️ Edit Knowledge Entry' : '➕ Create New Knowledge Entry'}
+                        </h3>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <span className="sr-only">Close</span>
+                          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {/* Question Field */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Question *
+                          </label>
+                          <textarea
+                            value={editForm.question}
+                            onChange={(e) => setEditForm({...editForm, question: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows={2}
+                            placeholder="Enter the question..."
+                          />
+                        </div>
+
+                        {/* Answer Field */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Answer *
+                          </label>
+                          <textarea
+                            value={editForm.answer}
+                            onChange={(e) => setEditForm({...editForm, answer: e.target.value})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows={4}
+                            placeholder="Enter the answer..."
+                          />
+                        </div>
+
+                        {/* Category and Subcategory */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Category *
+                            </label>
+                            <select
+                              value={editForm.category}
+                              onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select category</option>
+                              {categories.map((category) => (
+                                <option key={category.id} value={category.name}>
+                                  {category.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Subcategory
+                            </label>
+                            <input
+                              type="text"
+                              value={editForm.subcategory}
+                              onChange={(e) => setEditForm({...editForm, subcategory: e.target.value})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Optional subcategory"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Priority and Source URL */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Priority
+                            </label>
+                            <select
+                              value={editForm.priority}
+                              onChange={(e) => setEditForm({...editForm, priority: parseInt(e.target.value)})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value={1}>1 - Low</option>
+                              <option value={2}>2 - Normal</option>
+                              <option value={3}>3 - High</option>
+                              <option value={4}>4 - Very High</option>
+                              <option value={5}>5 - Critical</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Source URL
+                            </label>
+                            <input
+                              type="url"
+                              value={editForm.sourceUrl}
+                              onChange={(e) => setEditForm({...editForm, sourceUrl: e.target.value})}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="https://..."
+                            />
+                          </div>
+                        </div>
+
+                        {/* Data Source */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Data Source
+                          </label>
+                          <select
+                            value={editForm.dataSource}
+                            onChange={(e) => setEditForm({...editForm, dataSource: e.target.value as 'manual' | 'scraping' | 'import'})}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="manual">✏️ Manual - Added manually by admin</option>
+                            <option value="scraping">🌐 Scraping - Generated from website</option>
+                            <option value="import">📥 Import - Imported from training data</option>
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            This helps distinguish between manually added content and auto-generated knowledge.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Modal Actions */}
+                      <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={editingEntry ? handleSaveEdit : handleSaveNew}
+                          disabled={!editForm.question.trim() || !editForm.answer.trim() || !editForm.category}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {editingEntry ? '💾 Save Changes' : '➕ Create Entry'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Existing Knowledge Base Management */}
               <div className="bg-white shadow rounded-lg">
                 <div className="px-4 py-5 sm:p-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">📚 Knowledge Base Entries</h3>
+                    <div>
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">📚 Knowledge Base Entries</h3>
+                      {(selectedCategoryFilter || searchTerm) && (
+                        <div className="flex items-center mt-2 space-x-2">
+                          <span className="text-sm text-gray-600">Active filters:</span>
+                          {selectedCategoryFilter && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Category: {selectedCategoryFilter}
+                              <button
+                                onClick={() => setSelectedCategoryFilter('')}
+                                className="ml-1 inline-flex items-center p-0.5 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-600"
+                              >
+                                <span className="sr-only">Remove filter</span>
+                                <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
+                                  <path strokeLinecap="round" strokeWidth="1.5" d="m1 1 6 6m0-6-6 6" />
+                                </svg>
+                              </button>
+                            </span>
+                          )}
+                          {searchTerm && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Search: "{searchTerm}"
+                              <button
+                                onClick={() => setSearchTerm('')}
+                                className="ml-1 inline-flex items-center p-0.5 rounded-full text-green-400 hover:bg-green-200 hover:text-green-600"
+                              >
+                                <span className="sr-only">Remove filter</span>
+                                <svg className="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
+                                  <path strokeLinecap="round" strokeWidth="1.5" d="m1 1 6 6m0-6-6 6" />
+                                </svg>
+                              </button>
+                            </span>
+                          )}
+                          <button
+                            onClick={handleClearFilters}
+                            className="text-xs text-gray-500 hover:text-gray-700 underline"
+                          >
+                            Clear all filters
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <div className="flex space-x-3">
                       <input
                         type="text"
@@ -989,6 +1579,34 @@ export default function AdminDashboard() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md text-sm"
                       />
+                      {/* Bulk Delete Button */}
+                      <button
+                        onClick={handleBulkDelete}
+                        disabled={selectedIds.length === 0}
+                        className={`inline-flex items-center px-3 py-2 border text-sm font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                          selectedIds.length === 0
+                            ? 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                            : 'text-white bg-red-600 hover:bg-red-700 border-transparent'
+                        }`}
+                        title={selectedIds.length === 0 ? 'Select entries to delete' : `Delete ${selectedIds.length} selected entries`}
+                      >
+                        🗑️ Delete Selected
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowCategoryManager(true);
+                          fetchCategories();
+                        }}
+                        className="inline-flex items-center px-3 py-2 border border-purple-300 text-sm font-medium rounded-md shadow-sm text-purple-700 bg-purple-50 hover:bg-purple-100"
+                      >
+                        🏷️ Manage Categories
+                      </button>
+                      <button
+                        onClick={handleCreateNew}
+                        className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        ➕ New Entry
+                      </button>
                       <button
                         onClick={fetchKnowledgeBase}
                         className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
@@ -998,55 +1616,306 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    {filteredKnowledge.length > 0 ? filteredKnowledge.map((item) => (
+                    {currentPageItems.length > 0 ? currentPageItems.map((item) => (
                       <div key={item.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start">
+                        <div className="flex items-start mb-2">
+                          <input type="checkbox" className="mr-2 mt-1" checked={selectedIds.includes(item.id)} onChange={() => toggleSelect(item.id)} />
                           <div className="flex-1">
-                            <h4 className="text-sm font-medium text-gray-900 mb-2">{item.question}</h4>
-                            <p className="text-sm text-gray-600 mb-3">{item.answer}</p>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                              <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                                {item.category}
-                              </span>
-                              {item.subcategory && (
-                                <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                                  {item.subcategory}
-                                </span>
-                              )}
-                              {item.priority && item.priority > 1 && (
-                                <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
-                                  Priority: {item.priority}
-                                </span>
-                              )}
-                            </div>
-                            {item.sourceUrl && (
-                              <div className="text-xs text-blue-600">
-                                Source: <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.sourceUrl}</a>
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h4 className="text-sm font-medium text-gray-900 mb-2">
+                                  {item.question}
+                                  {(item as any).hits !== undefined && (
+                                    <span className="ml-2 inline-block bg-gray-200 text-gray-800 text-xs px-2 py-0.5 rounded-full">
+                                      hits: {(item as any).hits}
+                                    </span>
+                                  )}
+                                </h4>
+                                <p className="text-sm text-gray-600 mb-3">{item.answer}</p>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                    {item.category}
+                                  </span>
+                                  {item.subcategory && (
+                                    <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                                      {item.subcategory}
+                                    </span>
+                                  )}
+                                  {item.priority && item.priority > 1 && (
+                                    <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                                      Priority: {item.priority}
+                                    </span>
+                                  )}
+                                  {/* Data Source Tag */}
+                                  <span className={`inline-block text-xs px-2 py-1 rounded ${
+                                    item.dataSource === 'manual' ? 'bg-purple-100 text-purple-800' :
+                                    item.dataSource === 'scraping' ? 'bg-orange-100 text-orange-800' :
+                                    'bg-indigo-100 text-indigo-800'
+                                  }`}>
+                                    {item.dataSource === 'manual' ? '✏️ Manual' :
+                                     item.dataSource === 'scraping' ? '🌐 Scraped' :
+                                     '📥 Imported'}
+                                  </span>
+                                </div>
+                                {item.sourceUrl && (
+                                  <div className="text-xs text-blue-600">
+                                    Source: <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">{item.sourceUrl}</a>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-xs text-gray-500 mb-2">{item.lastUpdated}</span>
-                            <button
-                              onClick={() => handleDeleteKnowledgeEntry(item.id)}
-                              className="text-red-600 hover:text-red-800 text-sm"
-                              title="Delete this entry"
-                            >
-                              🗑️ Delete
-                            </button>
+                              <div className="flex flex-col items-end">
+                                <span className="text-xs text-gray-500 mb-2">{item.lastUpdated}</span>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => handleEditKnowledgeEntry(item)}
+                                    className="text-blue-600 hover:text-blue-800 text-sm"
+                                    title="Edit this entry"
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteKnowledgeEntry(item.id)}
+                                    className="text-red-600 hover:text-red-800 text-sm"
+                                    title="Delete this entry"
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
                     )) : (
                       <div className="text-center py-8">
                         <div className="text-gray-400 text-6xl mb-4">📚</div>
-                        <p className="text-gray-500 mb-4">No knowledge base items found.</p>
-                        <p className="text-sm text-gray-400">Add website URLs above to automatically populate the knowledge base with relevant information.</p>
+                        <p className="text-gray-500 mb-4">
+                          {filteredKnowledge.length === 0 ? "No knowledge base items found." : "No items on this page."}
+                        </p>
+                        {filteredKnowledge.length === 0 && (
+                          <p className="text-sm text-gray-400">Add website URLs above to automatically populate the knowledge base with relevant information.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {filteredKnowledge.length > entriesPerPage && (
+                    <div className="mt-6 flex items-center justify-between border-t pt-4">
+                      <div className="text-sm text-gray-700">
+                        Showing {startIndex + 1} to {Math.min(endIndex, filteredKnowledge.length)} of {filteredKnowledge.length} entries
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={handlePreviousPage}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          ← Previous
+                        </button>
+                        
+                        {/* Page numbers */}
+                        <div className="flex space-x-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentPage - 2 + i;
+                            }
+                            
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => handlePageChange(pageNum)}
+                                className={`px-3 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  currentPage === pageNum
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'text-gray-700 border-gray-300 hover:bg-gray-50'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        <button
+                          onClick={handleNextPage}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Category Management Modal */}
+              {showCategoryManager && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-xl font-bold text-gray-900">🏷️ Manage Categories</h2>
+                      <button
+                        onClick={() => setShowCategoryManager(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <span className="sr-only">Close</span>
+                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Add New Category Section */}
+                    <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        {editingCategory ? 'Edit Category' : 'Add New Category'}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Category Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={categoryForm.name}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter category name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Description
+                          </label>
+                          <input
+                            type="text"
+                            value={categoryForm.description}
+                            onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Optional description"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex space-x-3 mt-4">
+                        <button
+                          onClick={editingCategory ? handleUpdateCategory : handleCreateCategory}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                        >
+                          {editingCategory ? 'Update Category' : 'Create Category'}
+                        </button>
+                        {editingCategory && (
+                          <button
+                            onClick={handleCancelCategoryEdit}
+                            className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        {!editingCategory && (
+                          <button
+                            onClick={() => setShowCreateCategory(!showCreateCategory)}
+                            className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                          >
+                            {showCreateCategory ? 'Hide Form' : 'Show Form'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Categories List */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-gray-900">Existing Categories</h3>
+                      {categories.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categories.map((category) => (
+                            <div key={category.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1">
+                                  <h4 className="text-sm font-medium text-gray-900">{category.name}</h4>
+                                  {category.description && (
+                                    <p className="text-xs text-gray-600 mt-1">{category.description}</p>
+                                  )}
+                                  <div className="flex items-center mt-2 space-x-4">
+                                    <span className="text-xs text-gray-500">
+                                      {category.entryCount} entries
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      Created: {new Date(category.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2 ml-2">
+                                  <button
+                                    onClick={() => handleEditCategory(category)}
+                                    className="text-blue-600 hover:text-blue-800 text-xs"
+                                    title="Edit category"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCategory(category.id, category.name)}
+                                    className="text-red-600 hover:text-red-800 text-xs"
+                                    title="Delete category"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <div className="text-gray-400 text-4xl mb-4">🏷️</div>
+                          <p className="text-gray-500">No categories found.</p>
+                          <p className="text-sm text-gray-400 mt-2">Create your first category to organize your knowledge base entries.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status Messages */}
+                    {scrapingStatus === 'success' && scrapingMessage && (
+                      <div className="mt-6 bg-green-50 border border-green-200 rounded-md p-4">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-green-800">{scrapingMessage}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {scrapingStatus === 'error' && scrapingMessage && (
+                      <div className="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-red-800">{scrapingMessage}</p>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

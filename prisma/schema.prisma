@@ -5,11 +5,13 @@ generator client {
   provider = "prisma-client-js"
   engineType = "binary"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "linux-musl", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [vector]
 }
 
 model ChatSession {
@@ -38,9 +40,11 @@ model ChatMessage {
   queryType   String?
   processingTime Int?
   isSuccessful Boolean @default(true)
+  kbEntryId   String?
   createdAt   DateTime @default(now())
   
   session     ChatSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  knowledgeEntry KnowledgeBase? @relation(fields: [kbEntryId], references: [id])
   
   @@map("chat_messages")
 }
@@ -52,11 +56,16 @@ model KnowledgeBase {
   question    String
   answer      String
   keywords    String[]
+  embedding   Unsupported("vector")?
   sourceUrl   String?  // URL where this knowledge was scraped from
+  dataSource  String   @default("manual") // "manual", "scraping", "import" - tracks origin of data
   priority    Int      @default(1)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // Relations
+  chatMessages ChatMessage[]
   
   @@map("knowledge_base")
 }
@@ -212,4 +221,18 @@ model ApiQuota {
   
   @@unique([provider, date])
   @@map("api_quota")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  categoryId  String   @unique // flights, transportation, etc.
+  name        String
+  description String?
+  icon        String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("categories")
 } 

@@ -91,8 +91,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Save the interaction to database (non-blocking)
+    const queryType = aiResponse.knowledgeBaseUsed ? 'kb' : 'no_kb';
+    const mainEntryId = aiResponse.kbEntryId || null;
+
     try {
-      await saveMessage(sessionId, message, aiResponse.message, 'general', aiResponse.processingTime, aiResponse.success);
+      await saveMessage(sessionId, message, aiResponse.message, queryType, aiResponse.processingTime, aiResponse.success, mainEntryId);
     } catch (error) {
       console.warn('Failed to save message to database:', error);
     }
@@ -138,7 +141,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function saveMessage(sessionId: string, message: string, response: string, queryType: string, processingTime: number, isSuccessful: boolean) {
+async function saveMessage(sessionId: string, message: string, response: string, queryType: string, processingTime: number, isSuccessful: boolean, kbEntryId: string | null) {
   try {
     // Ensure session exists
     await prisma.chatSession.upsert({
@@ -160,7 +163,8 @@ async function saveMessage(sessionId: string, message: string, response: string,
         response,
         queryType,
         processingTime,
-        isSuccessful
+        isSuccessful,
+        ...(kbEntryId ? { kbEntryId } : {})
       }
     });
   } catch (error) {

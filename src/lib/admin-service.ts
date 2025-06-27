@@ -401,6 +401,8 @@ export class AdminService {
     answer: string;
     keywords: string[];
     priority?: number;
+    sourceUrl?: string;
+    dataSource?: string;
   }): Promise<any | null> {
     try {
       const entry = await prisma.knowledgeBase.create({
@@ -410,7 +412,9 @@ export class AdminService {
           question: data.question,
           answer: data.answer,
           keywords: data.keywords,
-          priority: data.priority || 1
+          priority: data.priority || 1,
+          sourceUrl: data.sourceUrl,
+          dataSource: data.dataSource || 'manual'
         }
       });
 
@@ -429,6 +433,8 @@ export class AdminService {
     answer?: string;
     keywords?: string[];
     priority?: number;
+    sourceUrl?: string;
+    dataSource?: string;
     isActive?: boolean;
   }): Promise<any | null> {
     try {
@@ -447,15 +453,22 @@ export class AdminService {
   // Delete Knowledge Base Entry
   async deleteKnowledgeEntry(id: string): Promise<boolean> {
     try {
-      await prisma.knowledgeBase.update({
-        where: { id },
-        data: { isActive: false }
-      });
-
+      await prisma.knowledgeBase.delete({ where: { id } });
       return true;
     } catch (error) {
       console.error('Delete knowledge entry error:', error);
       return false;
+    }
+  }
+
+  // Delete Knowledge Entries (bulk)
+  async deleteKnowledgeEntries(ids: string[]): Promise<number> {
+    try {
+      const result = await prisma.knowledgeBase.deleteMany({ where: { id: { in: ids } } });
+      return result.count;
+    } catch (error) {
+      console.error('Bulk delete knowledge entries error:', error);
+      return 0;
     }
   }
 
@@ -578,6 +591,35 @@ export class AdminService {
     return Array.from(statsMap.entries())
       .map(([date, stats]) => ({ date, ...stats }))
       .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  async getUnansweredQueries(limit: number = 100): Promise<Array<{ question: string; answer: string; lastAsked: Date }>> {
+    try {
+      const results = await prisma.$queryRawUnsafe<Array<{ message: string; response: string; last_asked: Date }>>(
+        `SELECT message, response, MAX("createdAt") AS last_asked
+         FROM chat_messages
+         WHERE "queryType" = 'no_kb'
+         GROUP BY message, response
+         ORDER BY last_asked DESC
+         LIMIT ${limit};`
+      );
+
+      return results.map(r => ({
+        question: r.message,
+        answer: r.response,
+        lastAsked: new Date(r.last_asked)
+      }));
+    } catch (err) {
+      console.error('Failed to get unanswered queries:', err);
+      return [];
+    }
+  }
+
+  async markUnansweredResolved(question: string): Promise<void> {
+    await prisma.chatMessage.updateMany({
+      where: { message: question, queryType: 'no_kb' },
+      data: { queryType: 'kb' }
+    });
   }
 }
 

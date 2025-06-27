@@ -12,6 +12,18 @@ export interface ChatSession {
   createdAt: Date;
 }
 
+export interface KnowledgeItem {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  subcategory?: string;
+  priority?: number;
+  sourceUrl?: string;
+  dataSource: 'manual' | 'scraping' | 'import';
+  lastUpdated: string;
+}
+
 export interface APIResponse {
   success: boolean;
   data?: any;
