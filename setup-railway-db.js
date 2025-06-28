@@ -34,8 +34,8 @@ async function setupRailway() {
     // Create new .env.local with Railway database
     const envContent = `# Local Development with Railway Database
 DATABASE_URL="${databaseUrl.trim()}"
-GEMINI_API_KEY="AIzaSyDFFhoDqRGczeznm6uO454fUe_WzAafBUo"
-JWT_SECRET="f8822c96a78217e9f8aa68ee0f635f01"
+GEMINI_API_KEY="Add Key"
+JWT_SECRET="Add Key"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NEXT_PUBLIC_WIDGET_URL="http://localhost:3000/widget"
 NODE_ENV="development"`;
