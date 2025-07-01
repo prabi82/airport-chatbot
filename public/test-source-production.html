@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sources in Production - Oman Airports Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .log-output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .widget-test {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Production Source Links Test</h1>
+    
+    <div class="test-container">
+        <h2>Direct API Test</h2>
+        <p>Test the production API directly to see if sources are returned:</p>
+        <button onclick="testProductionAPI()">Test "Is there a KFC?" API Call</button>
+        <button onclick="testParkingAPI()">Test "Parking rates?" API Call</button>
+        <button onclick="clearLog()">Clear Log</button>
+        <div id="api-log" class="log-output"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Widget Test</h2>
+        <p>Test the chat widget with source link functionality:</p>
+        <button onclick="loadWidget()">Load Chat Widget</button>
+        <div id="widget-container" class="widget-test"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Database Test</h2>
+        <p>Check if knowledge base entries have source URLs:</p>
+        <button onclick="testKnowledgeBase()">Check Knowledge Base Sources</button>
+        <div id="db-log" class="log-output"></div>
+    </div>
+
+    <script>
+        const PRODUCTION_URL = 'https://airport-chatbot-lnwy4eg65-prabikrishna-gmailcoms-projects.vercel.app';
+        
+        function log(message, containerId = 'api-log') {
+            const timestamp = new Date().toISOString();
+            const logElement = document.getElementById(containerId);
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('api-log').textContent = '';
+        }
+
+        async function testProductionAPI() {
+            log('🚀 Testing production API for KFC query...');
+            
+            try {
+                // First create a session
+                log('📝 Creating session...');
+                const sessionResponse = await fetch(`${PRODUCTION_URL}/api/chat/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        language: 'en'
+                    })
+                });
+
+                if (!sessionResponse.ok) {
+                    throw new Error(`Session creation failed: ${sessionResponse.status}`);
+                }
+
+                const sessionData = await sessionResponse.json();
+                log(`✅ Session created: ${sessionData.sessionId}`);
+
+                // Now send the message
+                log('💬 Sending KFC query...');
+                const response = await fetch(`${PRODUCTION_URL}/api/chat/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'is there a KFC at the airport?',
+                        sessionId: sessionData.sessionId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                log('📊 Raw API Response:');
+                log(JSON.stringify(data, null, 2));
+                
+                if (data.sources && data.sources.length > 0) {
+                    log('🎉 SOURCES FOUND in production!');
+                    data.sources.forEach((source, index) => {
+                        log(`  ${index + 1}. ${source}`);
+                    });
+                } else {
+                    log('❌ NO SOURCES returned from production API');
+                    log('This could mean:');
+                    log('  - Knowledge base entries missing sourceUrl');
+                    log('  - AI service not finding matching entries');
+                    log('  - Database connection issues');
+                }
+
+            } catch (error) {
+                log(`❌ Error testing production API: ${error.message}`);
+            }
+        }
+
+        async function testParkingAPI() {
+            log('🚀 Testing production API for parking query...');
+            
+            try {
+                const sessionResponse = await fetch(`${PRODUCTION_URL}/api/chat/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        language: 'en'
+                    })
+                });
+
+                const sessionData = await sessionResponse.json();
+                log(`✅ Session created: ${sessionData.sessionId}`);
+
+                const response = await fetch(`${PRODUCTION_URL}/api/chat/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'what are the parking rates?',
+                        sessionId: sessionData.sessionId
+                    })
+                });
+
+                const data = await response.json();
+                log('📊 Parking Query Response:');
+                log(JSON.stringify(data, null, 2));
+                
+                if (data.sources && data.sources.length > 0) {
+                    log('🎉 SOURCES FOUND for parking query!');
+                    data.sources.forEach((source, index) => {
+                        log(`  ${index + 1}. ${source}`);
+                    });
+                } else {
+                    log('❌ NO SOURCES for parking query');
+                }
+
+            } catch (error) {
+                log(`❌ Error testing parking API: ${error.message}`);
+            }
+        }
+
+        async function testKnowledgeBase() {
+            log('🔍 Testing knowledge base entries for source URLs...', 'db-log');
+            
+            try {
+                // Test with a direct knowledge endpoint if available
+                const response = await fetch(`${PRODUCTION_URL}/api/admin/knowledge`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('📊 Knowledge base response:', 'db-log');
+                    log(JSON.stringify(data, null, 2), 'db-log');
+                } else {
+                    log('❌ Could not access knowledge base endpoint', 'db-log');
+                    log('This might be a protected endpoint requiring authentication', 'db-log');
+                }
+
+            } catch (error) {
+                log(`❌ Error testing knowledge base: ${error.message}`, 'db-log');
+            }
+        }
+
+        function loadWidget() {
+            const container = document.getElementById('widget-container');
+            container.innerHTML = `
+                <div style="position: relative; height: 400px;">
+                    <div id="omanairports-chat-widget"></div>
+                    <div id="omanairports-chat-button"></div>
+                </div>
+                <script src="${PRODUCTION_URL}/widget/chat-widget.js"><\/script>
+                <script>
+                    window.omanairportsChatConfig = {
+                        apiUrl: '${PRODUCTION_URL}/api',
+                        title: 'Source Test Widget',
+                        position: 'bottom-right',
+                        language: 'en'
+                    };
+                    
+                    // Initialize widget
+                    setTimeout(() => {
+                        if (window.OmanAirportsChatWidget) {
+                            new window.OmanAirportsChatWidget(window.omanairportsChatConfig);
+                        }
+                    }, 1000);
+                <\/script>
+            `;
+        }
+
+        // Auto-run initial test
+        window.addEventListener('load', () => {
+            log('🔧 Production Source Test Ready');
+            log('Click "Test API Call" to check if sources are working in production');
+        });
+    </script>
+</body>
+</html> 
