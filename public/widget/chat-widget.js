@@ -186,6 +186,12 @@ class OmanAirportsChatWidget {
         console.log('🔧 Using enhanced processing approach');
         this.addMessage('bot', data.response);
         
+        // Add source links if available
+        if (data.sources && data.sources.length > 0) {
+          console.log('📚 Sources detected:', data.sources);
+          this.addSourceLinks(data.sources);
+        }
+        
         console.log('Message sent successfully, response time:', data.responseTime + 'ms');
         if (data.links && data.links.length > 0) {
           console.log('📊 Links detected in response:', data.links.length);
@@ -359,6 +365,81 @@ class OmanAirportsChatWidget {
       setTimeout(() => {
         this.addLinkMessage(links);
       }, 500); // Small delay for better UX
+    }
+  }
+
+  // Add source links as a separate message
+  addSourceLinks(sources) {
+    console.log('🔗 addSourceLinks called with:', sources);
+    
+    if (!sources || !Array.isArray(sources) || sources.length === 0) {
+      console.log('❌ No valid sources to display');
+      return;
+    }
+
+    const messagesContainer = document.getElementById('chat-widget-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message chat-message--bot chat-message--sources';
+    
+    const time = new Date().toLocaleTimeString();
+    
+    // Create source links HTML
+    const sourceLinksHtml = sources.map(sourceUrl => {
+      const displayName = this.getSourceDisplayName(sourceUrl);
+      console.log(`🔗 Creating source link: ${sourceUrl} -> ${displayName}`);
+      return `<a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" style="color: #059669; text-decoration: none; display: block; margin: 4px 0; padding: 4px 8px; background: #f0fdf4; border-radius: 4px; border-left: 3px solid #059669;">🔗 ${displayName}</a>`;
+    }).join('');
+    
+    messageDiv.innerHTML = `
+      <div class="chat-message__content">
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-top: 8px;">
+          <div style="color: #059669; font-weight: 600; margin-bottom: 8px;">📚 Official Sources</div>
+          ${sourceLinksHtml}
+        </div>
+      </div>
+      <div class="chat-message__time">${time}</div>
+    `;
+
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    console.log('✅ Source links added successfully');
+  }
+
+  // Convert source URLs to friendly display names
+  getSourceDisplayName(url) {
+    if (!url) return 'Source';
+    
+    try {
+      // Remove protocol and domain
+      const path = url.replace(/^https?:\/\/[^\/]+/, '');
+      
+      // Common patterns for Oman Airports website
+      if (path.includes('restaurants')) return 'Restaurants & Quick Bites';
+      if (path.includes('shopping')) return 'Shopping';
+      if (path.includes('services')) return 'Airport Services';
+      if (path.includes('transport')) return 'Transportation';
+      if (path.includes('parking')) return 'Parking Information';
+      if (path.includes('flights')) return 'Flight Information';
+      if (path.includes('arrivals')) return 'Arrivals';
+      if (path.includes('departures')) return 'Departures';
+      if (path.includes('facilities')) return 'Airport Facilities';
+      if (path.includes('contact')) return 'Contact Information';
+      
+      // Extract from path if possible
+      const segments = path.split('/').filter(s => s.length > 0);
+      if (segments.length > 0) {
+        const lastSegment = segments[segments.length - 1];
+        // Convert kebab-case to Title Case
+        return lastSegment
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
+      }
+      
+      return 'Official Source';
+    } catch (error) {
+      console.error('Error processing source URL:', error);
+      return 'Official Source';
     }
   }
 }
