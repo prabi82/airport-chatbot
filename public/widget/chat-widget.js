@@ -1,3 +1,7 @@
+// Oman Airports Chat Widget v2.1.0 - With Source Links Support
+// Last updated: 2025-01-27
+console.log('🔧 Loading Oman Airports Chat Widget v2.1.0 with Source Links Support');
+
 class OmanAirportsChatWidget {
   constructor(config = {}) {
     // Auto-detect port if not provided
