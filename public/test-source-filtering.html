@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source Filtering Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .result { margin-top: 15px; padding: 10px; background: #f5f5f5; }
+        .source { color: green; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Source Filtering Test</h1>
+    
+    <div class="test-section">
+        <h3>Test 1: KFC Location Query</h3>
+        <button onclick="testKFC()">Test "where is KFC located?"</button>
+        <div id="result1" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test 2: General Dining Query</h3>
+        <button onclick="testDining()">Test "what dining options are available?"</button>
+        <div id="result2" class="result"></div>
+    </div>
+
+    <script>
+        async function testKFC() {
+            const resultDiv = document.getElementById('result1');
+            resultDiv.innerHTML = '⏳ Testing...';
+            
+            try {
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'where is KFC located?',
+                        sessionId: 'test-kfc-' + Date.now()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                let html = `
+                    <h4>📄 Response:</h4>
+                    <p>${data.message || 'No message'}</p>
+                    <h4>🔗 Sources (${data.sources ? data.sources.length : 0}):</h4>
+                `;
+                
+                if (data.sources && data.sources.length > 0) {
+                    data.sources.forEach((source, index) => {
+                        const name = getSourceDisplayName(source);
+                        html += `<div class="source">${index + 1}. ${name}</div>`;
+                    });
+                } else {
+                    html += '<div>❌ No sources returned</div>';
+                }
+                
+                html += `<br><strong>Expected:</strong> Only 1-2 highly relevant dining sources`;
+                
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testDining() {
+            const resultDiv = document.getElementById('result2');
+            resultDiv.innerHTML = '⏳ Testing...';
+            
+            try {
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: 'what dining options are available?',
+                        sessionId: 'test-dining-' + Date.now()
+                    })
+                });
+                
+                const data = await response.json();
+                
+                let html = `
+                    <h4>📄 Response:</h4>
+                    <p>${data.message || 'No message'}</p>
+                    <h4>🔗 Sources (${data.sources ? data.sources.length : 0}):</h4>
+                `;
+                
+                if (data.sources && data.sources.length > 0) {
+                    data.sources.forEach((source, index) => {
+                        const name = getSourceDisplayName(source);
+                        html += `<div class="source">${index + 1}. ${name}</div>`;
+                    });
+                } else {
+                    html += '<div>❌ No sources returned</div>';
+                }
+                
+                html += `<br><strong>Expected:</strong> Only dining-related sources`;
+                
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+
+        function getSourceDisplayName(sourceUrl) {
+            if (sourceUrl.includes('restaurants-quick-bites')) {
+                return '🔗 Restaurants & Quick Bites';
+            } else if (sourceUrl.includes('to-from')) {
+                return '🔗 Transportation Guide';
+            } else if (sourceUrl.includes('primeclass-lounge')) {
+                return '🔗 Primeclass Lounge';
+            } else if (sourceUrl.includes('muscatairport.co.om')) {
+                return '🔗 Muscat Airport Official';
+            }
+            return `🔗 ${sourceUrl}`;
+        }
+    </script>
+</body>
+</html> 

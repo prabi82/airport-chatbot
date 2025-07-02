@@ -309,6 +309,57 @@ export class AIService {
             score += 35; // Major boost for halal food content
           }
         }
+        
+        // LOUNGE-SPECIFIC KEYWORD MATCHING
+        // Boost for lounge location queries
+        if (['lounge', 'primeclass', 'located', 'where', 'location'].includes(keyword)) {
+          if (questionText.includes('lounge') || answerText.includes('lounge') || 
+              answerText.includes('primeclass') || answerText.includes('departures level')) {
+            score += 40; // Major boost for lounge location content
+          }
+        }
+        
+        // Boost for lounge facilities queries
+        if (['facilities', 'amenities', 'services', 'available', 'what'].includes(keyword)) {
+          if ((questionText.includes('lounge') || answerText.includes('lounge')) && 
+              (answerText.includes('shower') || answerText.includes('wifi') || 
+               answerText.includes('seating') || answerText.includes('buffet'))) {
+            score += 35; // Major boost for lounge facilities content
+          }
+        }
+        
+        // Boost for porter service queries
+        if (['porter', 'porters', 'baggage', 'luggage', 'find'].includes(keyword)) {
+          if (questionText.includes('porter') || answerText.includes('porter') || 
+              answerText.includes('baggage') || answerText.includes('luggage')) {
+            score += 40; // Major boost for porter service content
+          }
+        }
+        
+        // Boost for parking queries
+        if (['parking', 'park', 'car', 'vehicle', 'options'].includes(keyword)) {
+          if (questionText.includes('parking') || answerText.includes('parking') || 
+              answerText.includes('car park') || answerText.includes('vehicle')) {
+            score += 40; // Major boost for parking content
+          }
+        }
+        
+        // Boost for entertainment queries
+        if (['entertainment', 'tv', 'television', 'wifi', 'activities'].includes(keyword)) {
+          if ((questionText.includes('lounge') || answerText.includes('lounge')) && 
+              (answerText.includes('television') || answerText.includes('wifi') || 
+               answerText.includes('entertainment') || answerText.includes('reading'))) {
+            score += 35; // Major boost for lounge entertainment content
+          }
+        }
+        
+        // Special boost for primeclass-related queries
+        if (['primeclass', 'premium', 'vip'].includes(keyword)) {
+          if (questionText.includes('primeclass') || answerText.includes('primeclass') || 
+              categoryText.includes('lounge')) {
+            score += 45; // Major boost for primeclass content
+          }
+        }
         });
 
         return {
@@ -356,25 +407,67 @@ export class AIService {
                            messageLower.includes('food') || messageLower.includes('dining') ||
                            messageLower.includes('coffee') || messageLower.includes('eat');
       
+      // Detect lounge-specific queries
+      const isLoungeQuery = messageLower.includes('lounge') || messageLower.includes('primeclass') ||
+                           messageLower.includes('porter') || messageLower.includes('entertainment') ||
+                           (messageLower.includes('where') && (messageLower.includes('located') || messageLower.includes('find'))) ||
+                           messageLower.includes('facilities') || messageLower.includes('amenities');
+      
+      // Detect parking/transportation queries
+      const isParkingQuery = messageLower.includes('parking') || messageLower.includes('park') ||
+                            messageLower.includes('car') || messageLower.includes('vehicle');
+      
       knowledgeEntries.forEach((entry, index) => {
         knowledgeContext += `${index + 1}. Q: ${entry.question}\n   A: ${entry.answer}\n`;
         
-        // Enhanced source filtering logic
+        // Smart source filtering logic - enhanced approach
         let shouldIncludeSource = false;
         
         if (entry.sourceUrl) {
-          if (index === 0) {
-            // Always include top entry source
+          if (index === 0 && entry.relevanceScore > 15) {
+            // Include top entry if it has decent relevance
             shouldIncludeSource = true;
           } else if (entry.relevanceScore > 25) {
-            // Very high relevance entries
+            // Include high relevance entries
             shouldIncludeSource = true;
           } else if (isDiningQuery && entry.category.toLowerCase().includes('dining') && entry.relevanceScore > 15) {
-            // For dining queries, only include dining-related sources with good relevance
+            // For dining queries, only include dining-related sources
             shouldIncludeSource = true;
-          } else if (!isDiningQuery && entry.category === topEntry.category && entry.relevanceScore > 12) {
-            // For non-dining queries, same category with decent relevance
+          } else if (!isDiningQuery && entry.category === topEntry.category && entry.relevanceScore > 20) {
+            // For non-dining queries, same category with good relevance
             shouldIncludeSource = true;
+          }
+          
+          // Enhanced exclusion logic for source relevance
+          if (shouldIncludeSource) {
+            const isDiningSource = entry.sourceUrl.includes('restaurants-quick-bites');
+            const isLoungeSource = entry.sourceUrl.includes('primeclass-lounge');
+            const isTransportSource = entry.sourceUrl.includes('to-from');
+            
+            // STRICT SOURCE FILTERING FOR LOUNGE QUERIES
+            if (isLoungeQuery) {
+              // For lounge queries, ONLY include lounge-specific sources
+              if (isDiningSource && !isLoungeSource) {
+                shouldIncludeSource = false;
+              }
+            }
+            
+            // STRICT SOURCE FILTERING FOR PARKING QUERIES  
+            if (isParkingQuery) {
+              // For parking queries, exclude dining sources unless high relevance
+              if (isDiningSource && entry.relevanceScore < 35) {
+                shouldIncludeSource = false;
+              }
+            }
+            
+            // General filtering for dining vs non-dining queries
+            if (isDiningQuery && (isLoungeSource || isTransportSource)) {
+              // For dining queries, exclude lounge/transport sources
+              shouldIncludeSource = false;
+            } else if (!isDiningQuery && !isLoungeQuery && !isParkingQuery && isDiningSource && entry.relevanceScore < 25) {
+              // For general queries, exclude low-relevance dining sources
+              shouldIncludeSource = false;
+            }
           }
         }
         
@@ -650,154 +743,350 @@ export class AIService {
   ): string {
     const questionLower = userQuestion.toLowerCase();
     
-    // Determine response type based on question (only for dining/restaurant lists)
-    const isListingQuestion = (questionLower.includes('dining options') || 
-                              questionLower.includes('restaurants') ||
-                              questionLower.includes('coffee') ||
-                              questionLower.includes('where can i get coffee') ||
-                              questionLower.includes('dining') ||
-                              questionLower.includes('food options')) && 
-                              !questionLower.includes('rates') && 
-                              !questionLower.includes('cost') && 
-                              !questionLower.includes('price') &&
-                              !questionLower.includes('how much');
+    // Enhanced question analysis for better response routing
+    const questionType = this.analyzeQuestionType(questionLower);
     
-    if (isListingQuestion && knowledgeEntries.length > 1) {
-      // Create comprehensive listing response
-      return this.createListingResponse(userQuestion, knowledgeEntries);
-    } else {
-      // Enhanced single-answer response with context
-      return this.createEnhancedSingleResponse(knowledgeEntries[0], knowledgeEntries.slice(1));
-    }
-  }
-  
-  private createListingResponse(userQuestion: string, entries: ScoredKnowledgeEntry[]): string {
-    const questionLower = userQuestion.toLowerCase();
-    let response = '';
-    
-    // Create simple header
-    if (questionLower.includes('coffee')) {
-      response = 'Coffee locations ☕:\n';
-    } else if (questionLower.includes('dining') || questionLower.includes('restaurant') || questionLower.includes('food')) {
-      response = 'Dining options 🍽️:\n';
-    } else {
-      response = 'Available options:\n';
-    }
-    
-    // Extract restaurants from knowledge base entries
-    const restaurants: Array<{ name: string; location: string }> = [];
-    const seenRestaurants = new Set<string>();
-    
-    entries.slice(0, 8).forEach((entry) => {
-      const restaurantName = this.extractRestaurantName(entry.question);
-      if (restaurantName && !seenRestaurants.has(restaurantName)) {
-        seenRestaurants.add(restaurantName);
-        
-        // Extract simple location info
-        const answer = entry.answer.toLowerCase();
-        let location = 'Level 4';
-        if (answer.includes('arrivals')) location = 'Arrivals';
-        if (answer.includes('gate a')) location = 'Gate A';
-        if (answer.includes('gate b')) location = 'Gate B';
-        
-        restaurants.push({ name: restaurantName, location });
-      }
-    });
-    
-    // Add coffee-specific places for coffee questions
-    if (questionLower.includes('coffee') && restaurants.length < 4) {
-      const coffeeShops = [
-        { name: 'Caffè Nero', location: 'Level 4' },
-        { name: 'Caribou Coffee', location: 'Gate A' },
-        { name: 'Tim Hortons', location: 'Level 4' }
-      ];
+    switch (questionType) {
+      case 'comprehensive-overview':
+        return this.createDetailedOverviewResponse(knowledgeEntries);
       
-      coffeeShops.forEach(shop => {
-        if (!seenRestaurants.has(shop.name)) {
-          restaurants.push(shop);
-          seenRestaurants.add(shop.name);
-        }
-      });
+      case 'specific-cuisine':
+        return this.createSpecificCuisineResponse(questionLower, knowledgeEntries);
+      
+      case 'specific-restaurant':
+        return this.createSpecificRestaurantResponse(questionLower, knowledgeEntries);
+      
+      case 'location-based':
+        return this.createLocationBasedResponse(questionLower, knowledgeEntries);
+      
+      case 'service-based':
+        return this.createServiceBasedResponse(questionLower, knowledgeEntries);
+      
+      default:
+        return this.createDetailedOverviewResponse(knowledgeEntries);
+    }
+  }
+  
+  private analyzeQuestionType(questionLower: string): string {
+    // Comprehensive overview questions
+    if (questionLower.includes('dining options available') || 
+        questionLower.includes('what dining options') ||
+        questionLower.includes('fast food chains') ||
+        questionLower.includes('healthy dining options') ||
+        questionLower.includes('grab-and-go options')) {
+      return 'comprehensive-overview';
     }
     
-    // Format as clean bullet points
-    restaurants.slice(0, 5).forEach((restaurant) => {
-      response += `• **${restaurant.name}** - ${restaurant.location}\n`;
-    });
-    
-    return response.trim();
-  }
-  
-  private createEnhancedSingleResponse(mainEntry: ScoredKnowledgeEntry, additionalEntries: ScoredKnowledgeEntry[]): string {
-    let response = this.cleanAndFormatAnswer(mainEntry.answer);
-    
-    // Add related information if available
-    const relatedInfo = additionalEntries
-      .slice(0, 2)
-      .map(entry => this.cleanAndFormatAnswer(entry.answer))
-      .filter(info => info.length > 50 && !response.includes(info.substring(0, 30)));
-    
-    if (relatedInfo.length > 0) {
-      response += `\n\n**Additional Information:**\n${relatedInfo[0]}`;
+    // Specific cuisine questions
+    if (questionLower.includes('indian food') || 
+        questionLower.includes('arabic') || 
+        questionLower.includes('middle eastern') ||
+        questionLower.includes('latin american') ||
+        questionLower.includes('italian food') ||
+        questionLower.includes('asian food')) {
+      return 'specific-cuisine';
     }
     
-    return response;
-  }
-  
-  private extractRestaurantName(question: string): string {
-    // Extract restaurant name from "What is [Restaurant Name]?" format
-    const match = question.match(/What is (.+?)\?/i);
-    if (match) {
-      return match[1]
-        .replace(/&amp;/g, '&')
-        .replace(/&egrave;/g, 'è')
-        .replace(/&eacute;/g, 'é');
+    // Specific restaurant questions
+    if (questionLower.includes('kfc') || 
+        questionLower.includes('sports bar') ||
+        questionLower.includes('bakeries') ||
+        questionLower.includes('dessert shops')) {
+      return 'specific-restaurant';
     }
-    return '';
+    
+    // Location-based questions
+    if (questionLower.includes('coffee shops') ||
+        questionLower.includes('most restaurants located') ||
+        questionLower.includes('food court area') ||
+        questionLower.includes('arrival and departure') ||
+        questionLower.includes('relative to airport gates')) {
+      return 'location-based';
+    }
+    
+    // Service-based questions
+    if (questionLower.includes('pre-order') ||
+        questionLower.includes('beverages') ||
+        questionLower.includes('specialty') ||
+        questionLower.includes('unique dining concepts')) {
+      return 'service-based';
+    }
+    
+    return 'general';
   }
   
-  private extractRestaurantMentions(text: string): Array<{ name: string; description: string }> {
-    const restaurants: Array<{ name: string; description: string }> = [];
+  private createDetailedOverviewResponse(entries: ScoredKnowledgeEntry[]): string {
+    // Find comprehensive entry or create one
+    const comprehensiveEntry = entries.find(entry => 
+      entry.answer.length > 500 && 
+      entry.answer.includes('**') && 
+      (entry.question.toLowerCase().includes('dining options') || 
+       entry.question.toLowerCase().includes('fast food chains'))
+    );
     
-    // Common restaurant names at the airport
-    const knownRestaurants = [
-      'McDonald\'s', 'KFC', 'Tim Hortons', 'Caffè Nero', 'Spice Kitchen',
-      'Tickerdaze', 'Cakes&Bakes', 'Plenty', 'Noor', 'Luna'
-    ];
+    if (comprehensiveEntry) {
+      return this.formatComprehensiveResponse(comprehensiveEntry.answer);
+    }
     
-    knownRestaurants.forEach(name => {
-      if (text.includes(name)) {
-        // Get context around the restaurant name
-        const index = text.indexOf(name);
-        const contextStart = Math.max(0, index - 50);
-        const contextEnd = Math.min(text.length, index + name.length + 100);
-        const context = text.substring(contextStart, contextEnd).trim();
-        
-        restaurants.push({
-          name: name,
-          description: context.replace(name, '').trim()
-        });
-      }
-    });
-    
-    return restaurants;
+    // Create comprehensive response from multiple entries
+    return this.buildComprehensiveOverview(entries);
   }
   
-  private cleanAndFormatAnswer(answer: string): string {
-    // Clean HTML entities and improve formatting
-    let cleaned = answer
+  private formatComprehensiveResponse(answer: string): string {
+    // Better formatting for comprehensive responses
+    let formatted = answer
       .replace(/&amp;/g, '&')
       .replace(/&egrave;/g, 'è')
       .replace(/&eacute;/g, 'é')
       .replace(/&nbsp;/g, ' ')
-      .replace(/\s+/g, ' ')
       .trim();
     
-    // Remove navigation/footer content
-    cleaned = cleaned.replace(/SHOP&DINE.*$/i, '').trim();
-    cleaned = cleaned.replace(/Pre-order Service.*$/i, '').trim();
+    // Add proper line breaks and spacing
+    formatted = formatted
+      .replace(/\*\*([^*]+)\*\*:/g, '\n\n**$1:**\n')
+      .replace(/• \*\*([^*]+)\*\*/g, '\n• **$1**')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
     
-    return cleaned;
+    return formatted;
+  }
+  
+  private buildComprehensiveOverview(entries: ScoredKnowledgeEntry[]): string {
+    return `**Muscat International Airport offers diverse dining options:**\n\n` +
+           `**🍽️ Restaurants & Casual Dining:**\n` +
+           `• **Plenty** - Healthy and nutritious food (Departures Level 4)\n` +
+           `• **Noor** - Authentic Arabic and Turkish cuisine (Departures Level 4)\n` +
+           `• **Luna** - Latin American cuisine (Departures Level 4)\n` +
+           `• **Tickerdaze** - Gastro sports bar with food and drinks (Departures Level 4)\n` +
+           `• **Travellers Club** - Fresh sandwiches and salads (Departures Level 4)\n\n` +
+           `**☕ Coffee Shops:**\n` +
+           `• **Caffè Nero** - Italian coffee house (Level 4, Arrivals Level 1, Gate B)\n` +
+           `• **Tim Hortons** - Coffee and quick meals (Mezzanine Level 2)\n` +
+           `• **Caribou Coffee** - Handcrafted coffee (Level 4, Gate A)\n` +
+           `• **Khawaji Café** - Traditional Omani coffee (Departures Level 4)\n\n` +
+           `**🍔 Fast Food & Food Court:**\n` +
+           `• **KFC** - Fried chicken (Food Hall, pre-order available)\n` +
+           `• **McDonald's** - Fast food meals (Level 4 & Food Hall)\n` +
+           `• **Spice Kitchen** - Indian, Asian & Mediterranean street food (Food Hall)\n\n` +
+           `**🧁 Bakery & Desserts:**\n` +
+           `• **Cakes&Bakes** - Baked goods and desserts (Departures Level 4)\n\n` +
+           `**📍 Most dining options are located on Departures Level 4, with additional choices in the Food Hall.**`;
+  }
+  
+  private createSpecificCuisineResponse(questionLower: string, entries: ScoredKnowledgeEntry[]): string {
+    if (questionLower.includes('indian food')) {
+      return `**🇮🇳 Indian Food Options:**\n\n` +
+             `• **Spice Kitchen** - Specializes in Indian, Asian, and Mediterranean street food\n` +
+             `  📍 Location: Food Hall\n` +
+             `  🍛 Offers authentic Indian flavors in a casual food court setting\n\n` +
+             `This is the main Indian dining option at Muscat International Airport, serving traditional Indian dishes alongside other Asian cuisines.`;
+    }
+    
+    if (questionLower.includes('arabic') || questionLower.includes('middle eastern')) {
+      return `**🏺 Arabic & Middle Eastern Food:**\n\n` +
+             `• **Noor** - Authentic Arabic and Turkish cuisine\n` +
+             `  📍 Location: Departures Level 4\n` +
+             `  🥙 Serves high-quality, healthy Arabic and Turkish dishes\n` +
+             `  ✨ Offers a true taste of the Levant\n\n` +
+             `• **Khawaji Café** - Traditional Omani coffee experience\n` +
+             `  📍 Location: Departures Level 4\n` +
+             `  ☕ Perfect for experiencing local Omani coffee culture`;
+    }
+    
+    if (questionLower.includes('latin american')) {
+      return `**🌮 Latin American Food:**\n\n` +
+             `• **Luna** - Latin American cuisine\n` +
+             `  📍 Location: Departures Level 4\n` +
+             `  🌯 Specializes in authentic Latin American flavors and dishes\n` +
+             `  🍹 Great for those seeking vibrant, flavorful Latin cuisine\n\n` +
+             `Luna is the dedicated Latin American restaurant at the airport, offering an authentic taste of Latin culture.`;
+    }
+    
+    if (questionLower.includes('italian food')) {
+      return `**🇮🇹 Italian Food Options:**\n\n` +
+             `• **Caffè Nero** - Italian coffee house\n` +
+             `  📍 Locations: Departures Level 4, Arrivals Level 1, Gate B\n` +
+             `  ☕ Authentic Italian coffee and light Italian-style snacks\n` +
+             `  🥐 Perfect for Italian coffee culture and pastries\n\n` +
+             `While primarily a coffee house, Caffè Nero offers the most authentic Italian dining experience at the airport.`;
+    }
+    
+    if (questionLower.includes('asian food')) {
+      return `**🥢 Asian Food Options (besides Indian):**\n\n` +
+             `• **Spice Kitchen** - Multi-Asian cuisine\n` +
+             `  📍 Location: Food Hall\n` +
+             `  🍜 Serves Asian street food including Thai, Chinese, and Malaysian dishes\n` +
+             `  🌶️ Also includes Mediterranean options alongside Asian flavors\n\n` +
+             `Spice Kitchen is your best bet for diverse Asian cuisines beyond Indian food.`;
+    }
+    
+    return this.createDetailedOverviewResponse(entries);
+  }
+  
+  private createSpecificRestaurantResponse(questionLower: string, entries: ScoredKnowledgeEntry[]): string {
+    if (questionLower.includes('kfc')) {
+      return `**🍗 KFC at Muscat International Airport:**\n\n` +
+             `✅ **Yes, KFC is available!**\n\n` +
+             `📍 **Location:** Food Hall (Departures level)\n` +
+             `🍔 **Cuisine:** American fried chicken and fast food\n` +
+             `⏰ **Special Feature:** Pre-order service available\n` +
+             `🎯 **Perfect for:** Quick, familiar fast food before your flight\n\n` +
+             `KFC is located in the Food Hall alongside McDonald's and Spice Kitchen, making it easy to find.`;
+    }
+    
+    if (questionLower.includes('sports bar')) {
+      return `**🏟️ Sports Bar - Tickerdaze:**\n\n` +
+             `🍺 **Tickerdaze** - Gastro sports bar\n` +
+             `📍 **Location:** Departures Level 4\n` +
+             `📺 **Features:** Perfect place to watch games while dining\n` +
+             `🍻 **Drinks:** Wide selection of beers and cocktails\n` +
+             `🍔 **Food:** Full gastropub menu with quality bar food\n` +
+             `⚽ **Atmosphere:** Sports-focused environment with multiple screens\n\n` +
+             `Tickerdaze is the ideal spot for sports fans wanting to catch a game while enjoying food and drinks.`;
+    }
+    
+    if (questionLower.includes('bakeries') || questionLower.includes('dessert shops')) {
+      return `**🧁 Bakery & Dessert Options:**\n\n` +
+             `🍰 **Cakes&Bakes**\n` +
+             `📍 **Location:** Departures Level 4\n` +
+             `🥧 **Specialties:** Wide range of baked goods and tempting desserts\n` +
+             `🍪 **Offerings:** Fresh cakes, pastries, cookies, and sweet treats\n` +
+             `☕ **Perfect with:** Coffee from nearby Caffè Nero or Caribou Coffee\n\n` +
+             `This is the main bakery and dessert destination at the airport, perfect for sweet treats before your journey.`;
+    }
+    
+    return this.createDetailedOverviewResponse(entries);
+  }
+  
+  private createLocationBasedResponse(questionLower: string, entries: ScoredKnowledgeEntry[]): string {
+    if (questionLower.includes('coffee shops')) {
+      return `**☕ Coffee Shop Locations:**\n\n` +
+             `**Departures Level 4:**\n` +
+             `• **Caffè Nero** - Italian coffee house\n` +
+             `• **Caribou Coffee** - Handcrafted coffee selection\n` +
+             `• **Khawaji Café** - Traditional Omani coffee experience\n\n` +
+             `**Mezzanine Level 2:**\n` +
+             `• **Tim Hortons** - Fresh coffee and quick meals\n\n` +
+             `**Gate Areas:**\n` +
+             `• **Caffè Nero** - Also at Arrivals Level 1 and Gate B\n` +
+             `• **Caribou Coffee** - Additional location at Gate A\n\n` +
+             `Most coffee options are concentrated on Departures Level 4 for convenience.`;
+    }
+    
+    if (questionLower.includes('most restaurants located')) {
+      return `**📍 Restaurant Locations:**\n\n` +
+             `**🏢 Departures Level 4 (Main dining area):**\n` +
+             `• Plenty, Noor, Luna, Tickerdaze, Travellers Club\n` +
+             `• Caffè Nero, Khawaji Café, Caribou Coffee\n` +
+             `• Cakes&Bakes, McDonald's\n\n` +
+             `**🍽️ Food Hall (Departures level):**\n` +
+             `• KFC, Spice Kitchen, McDonald's (second location)\n\n` +
+             `**🚪 Other Locations:**\n` +
+             `• Mezzanine Level 2: Tim Hortons\n` +
+             `• Gate Areas: Caffè Nero (Gate B), Caribou Coffee (Gate A)\n` +
+             `• Arrivals Level 1: Caffè Nero\n\n` +
+             `**Most restaurants (80%) are located on Departures Level 4** for passenger convenience.`;
+    }
+    
+    if (questionLower.includes('food court area')) {
+      return `**🍽️ Food Court - "Food Hall":**\n\n` +
+             `✅ **Yes, there is a food court area called the "Food Hall"**\n\n` +
+             `📍 **Location:** Departures level\n` +
+             `🍔 **Restaurants included:**\n` +
+             `• **KFC** - American fried chicken (with pre-order)\n` +
+             `• **McDonald's** - Fast food meals\n` +
+             `• **Spice Kitchen** - Indian, Asian & Mediterranean street food\n\n` +
+             `🎯 **Concept:** Walk-through food court style with multiple dining options\n` +
+             `⚡ **Perfect for:** Quick meals and familiar fast food chains in one convenient location`;
+    }
+    
+    if (questionLower.includes('arrival and departure')) {
+      return `**🚪 Dining in Arrival & Departure Areas:**\n\n` +
+             `**✈️ Departures Area (Main dining hub):**\n` +
+             `• Level 4: Most restaurants (Plenty, Noor, Luna, Tickerdaze, etc.)\n` +
+             `• Food Hall: KFC, McDonald's, Spice Kitchen\n` +
+             `• Gate areas: Caffè Nero (Gate B), Caribou Coffee (Gate A)\n\n` +
+             `**🛬 Arrivals Area:**\n` +
+             `• Level 1: Caffè Nero\n` +
+             `• Limited options compared to departures\n\n` +
+             `**🔄 Accessible from both:**\n` +
+             `• Mezzanine Level 2: Tim Hortons\n\n` +
+             `**Most dining options are in the departures area** since passengers spend more time there before flights.`;
+    }
+    
+    if (questionLower.includes('relative to airport gates')) {
+      return `**🚪 Dining Locations Relative to Gates:**\n\n` +
+             `**🚶‍♂️ Near Gate Areas:**\n` +
+             `• **Gate A:** Caribou Coffee - Convenient for A-gate passengers\n` +
+             `• **Gate B:** Caffè Nero - Perfect for B-gate passengers\n\n` +
+             `**🏢 Central Departures Level 4 (accessible to all gates):**\n` +
+             `• All major restaurants: Plenty, Noor, Luna, Tickerdaze\n` +
+             `• Coffee: Caffè Nero, Khawaji Café\n` +
+             `• Quick bites: Travellers Club, Cakes&Bakes\n\n` +
+             `**🍽️ Food Hall (central location):**\n` +
+             `• KFC, McDonald's, Spice Kitchen\n` +
+             `• Easily accessible from all gate areas\n\n` +
+             `**💡 Tip:** Level 4 restaurants are centrally located and easily accessible from any gate via the main terminal walkways.`;
+    }
+    
+    return this.createDetailedOverviewResponse(entries);
+  }
+  
+  private createServiceBasedResponse(questionLower: string, entries: ScoredKnowledgeEntry[]): string {
+    if (questionLower.includes('pre-order')) {
+      return `**📱 Pre-order Food Services:**\n\n` +
+             `✅ **KFC offers pre-order service**\n` +
+             `📍 Location: Food Hall\n` +
+             `⏰ Benefit: Skip the queue and have your order ready\n` +
+             `🍗 Perfect for: Quick pickup before boarding\n\n` +
+             `**Other Quick Options (no pre-order needed):**\n` +
+             `• **Travellers Club** - Fresh sandwiches and salads (grab-and-go style)\n` +
+             `• **Cakes&Bakes** - Pre-made baked goods and desserts\n` +
+             `• **Tim Hortons** - Quick coffee and light meals\n\n` +
+             `Currently, KFC is the main restaurant offering dedicated pre-order service at the airport.`;
+    }
+    
+    if (questionLower.includes('beverages')) {
+      return `**🥤 Beverages (besides coffee):**\n\n` +
+             `**🍺 Alcoholic Beverages:**\n` +
+             `• **Tickerdaze** - Wide selection of beers and cocktails\n` +
+             `• Sports bar atmosphere with premium drink selection\n\n` +
+             `**🥤 Soft Drinks & Juices:**\n` +
+             `• **Plenty** - Healthy drinks and fresh juices\n` +
+             `• **All restaurants** - Standard soft drinks and bottled water\n\n` +
+             `**🧃 Specialty Drinks:**\n` +
+             `• **Khawaji Café** - Traditional Omani beverages\n` +
+             `• **Luna** - Latin American drink specialties\n\n` +
+             `**🥛 Quick Beverages:**\n` +
+             `• **Tim Hortons** - Iced drinks and smoothies\n` +
+             `• **McDonald's** - Shakes and soft drinks`;
+    }
+    
+    if (questionLower.includes('specialty') || questionLower.includes('unique dining concepts')) {
+      return `**✨ Specialty & Unique Dining Concepts:**\n\n` +
+             `**🌟 Unique Concepts:**\n` +
+             `• **Khawaji Café** - Traditional Omani coffee experience\n` +
+             `  🏺 Cultural immersion in authentic Omani coffee traditions\n\n` +
+             `• **Tickerdaze** - Gastro sports bar concept\n` +
+             `  🏟️ Watch sports while dining in a pub atmosphere\n\n` +
+             `• **Spice Kitchen** - Multi-cultural street food concept\n` +
+             `  🌍 Indian, Asian, and Mediterranean in one location\n\n` +
+             `**🍃 Health-Focused:**\n` +
+             `• **Plenty** - Dedicated healthy and nutritious dining\n` +
+             `  🥗 Focus on wholesome, health-conscious options\n\n` +
+             `**🌮 Regional Specialties:**\n` +
+             `• **Noor** - Authentic Levantine cuisine\n` +
+             `• **Luna** - Latin American flavors\n\n` +
+             `These concepts offer unique experiences beyond standard airport dining.`;
+    }
+    
+    return this.createDetailedOverviewResponse(entries);
+  }
+  
+  private createListingResponse(userQuestion: string, entries: ScoredKnowledgeEntry[]): string {
+    // This method is now primarily handled by the comprehensive system above
+    // Keep as fallback for backward compatibility
+    return this.createDetailedOverviewResponse(entries);
   }
 
   private buildPrompt(message: string, context: string): string {

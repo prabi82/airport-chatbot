@@ -1,0 +1,77 @@
+🍽️ Complete Dining FAQ Test - All 20 Questions
+
+
+📝 Question 1/20: What dining options are available at Muscat International Airport?
+   ✅ PASS (Score: 2, Length: 1421, Sources: 1)
+
+📝 Question 2/20: Are there any Indian food options at the airport?
+   ✅ PASS (Score: 3, Length: 69, Sources: 1)
+
+📝 Question 3/20: Where can I find coffee shops at Muscat airport?
+   ✅ PASS (Score: 3, Length: 148, Sources: 1)
+
+📝 Question 4/20: Is KFC available at Muscat airport?
+   ✅ PASS (Score: 3, Length: 195, Sources: 1)
+
+📝 Question 5/20: What fast food chains can I find at the airport?
+   ✅ PASS (Score: 3, Length: 2201, Sources: 1)
+
+📝 Question 6/20: Are there healthy dining options available?
+   ✅ PASS (Score: 3, Length: 1421, Sources: 1)
+
+📝 Question 7/20: Where can I find Arabic or Middle Eastern food?
+   ✅ PASS (Score: 3, Length: 1575, Sources: 1)
+
+📝 Question 8/20: Are there any bakeries or dessert shops at the airport?
+   ✅ PASS (Score: 2, Length: 155, Sources: 1)
+
+📝 Question 9/20: Is there a sports bar or place to watch games while dining?
+   ✅ PASS (Score: 3, Length: 46, Sources: 1)
+
+📝 Question 10/20: What Latin American food options are available?
+   ✅ PASS (Score: 2, Length: 49, Sources: 1)
+
+📝 Question 11/20: Can I pre-order food at the airport?
+   ✅ PASS (Score: 3, Length: 2201, Sources: 1)
+
+📝 Question 12/20: Where are most restaurants located in the airport?
+   ✅ PASS (Score: 2, Length: 62, Sources: 1)
+
+📝 Question 13/20: Are there grab-and-go options for quick meals?
+   ✅ PASS (Score: 2, Length: 192, Sources: 1)
+
+📝 Question 14/20: What Italian food options are available?
+   ✅ PASS (Score: 2, Length: 76, Sources: 1)
+
+📝 Question 15/20: Is there a food court area at the airport?
+   ✅ PASS (Score: 3, Length: 2201, Sources: 1)
+
+📝 Question 16/20: What beverages can I find besides coffee?
+   ✅ PASS (Score: 3, Length: 104, Sources: 1)
+
+📝 Question 17/20: Are there any specialty or unique dining concepts?
+   ✅ PASS (Score: 2, Length: 128, Sources: 1)
+
+📝 Question 18/20: What Asian food options are available besides Indian?
+   ✅ PASS (Score: 3, Length: 49, Sources: 1)
+
+📝 Question 19/20: Can I find food options in both arrival and departure areas?
+   ✅ PASS (Score: 2, Length: 81, Sources: 1)
+
+📝 Question 20/20: What should I know about dining locations relative to airport gates?
+   ✅ PASS (Score: 2, Length: 128, Sources: 1)
+
+================================================================================
+📊 COMPLETE DINING FAQ TEST RESULTS
+================================================================================
+Total Questions: 20
+Passed: 20 (100.0%)
+Failed: 0 (0.0%)
+
+📋 DETAILED BREAKDOWN:
+
+📈 STATISTICS:
+Average Response Length: 625 characters
+Source Coverage: 20/20 (100.0%)
+
+🎉 EXCELLENT! Dining responses are well optimized (100.0% pass rate)
