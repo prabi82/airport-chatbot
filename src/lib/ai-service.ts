@@ -346,9 +346,39 @@ export class AIService {
 
     if (knowledgeEntries.length > 0) {
       knowledgeContext = '\n\nRelevant Information from Knowledge Base:\n';
+      
+            // Smart source collection: only from highly relevant entries
+      const topEntry = knowledgeEntries[0];
+      const messageLower = message.toLowerCase();
+      
+      // Detect query type for better source filtering
+      const isDiningQuery = messageLower.includes('kfc') || messageLower.includes('restaurant') || 
+                           messageLower.includes('food') || messageLower.includes('dining') ||
+                           messageLower.includes('coffee') || messageLower.includes('eat');
+      
       knowledgeEntries.forEach((entry, index) => {
         knowledgeContext += `${index + 1}. Q: ${entry.question}\n   A: ${entry.answer}\n`;
+        
+        // Enhanced source filtering logic
+        let shouldIncludeSource = false;
+        
         if (entry.sourceUrl) {
+          if (index === 0) {
+            // Always include top entry source
+            shouldIncludeSource = true;
+          } else if (entry.relevanceScore > 25) {
+            // Very high relevance entries
+            shouldIncludeSource = true;
+          } else if (isDiningQuery && entry.category.toLowerCase().includes('dining') && entry.relevanceScore > 15) {
+            // For dining queries, only include dining-related sources with good relevance
+            shouldIncludeSource = true;
+          } else if (!isDiningQuery && entry.category === topEntry.category && entry.relevanceScore > 12) {
+            // For non-dining queries, same category with decent relevance
+            shouldIncludeSource = true;
+          }
+        }
+        
+        if (shouldIncludeSource && entry.sourceUrl) {
           sources.push(entry.sourceUrl);
         }
       });
