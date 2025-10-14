@@ -28,7 +28,7 @@ class OmanAirportsChatWidget {
   async init() {
     await this.loadStyles();
     this.createWidget();
-    this.createChatButton();
+    // this.createChatButton();
     this.bindEvents();
     await this.createSession();
   }
@@ -49,13 +49,6 @@ class OmanAirportsChatWidget {
     widget.className = `chat-widget chat-widget--${this.config.theme} chat-widget--${this.config.position}`;
     
     widget.innerHTML = `
-      <div class="chat-widget__header">
-        <div class="chat-widget__title">
-          <span>✈️ Oman Airports Assistant</span>
-        </div>
-        <button class="chat-widget__close" id="chat-widget-close">×</button>
-      </div>
-      
       <div class="chat-widget__body">
         <div class="chat-widget__messages" id="chat-widget-messages">
           <div class="chat-message chat-message--bot">
@@ -84,18 +77,18 @@ class OmanAirportsChatWidget {
     document.body.appendChild(widget);
   }
 
-  createChatButton() {
-    const button = document.createElement('div');
-    button.id = 'omanairports-chat-button';
-    button.className = `chat-button chat-button--${this.config.position}`;
-    button.innerHTML = `
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-      </svg>
-    `;
+  // createChatButton() {
+  //   const button = document.createElement('div');
+  //   button.id = 'omanairports-chat-button';
+  //   button.className = `chat-button chat-button--${this.config.position}`;
+  //   button.innerHTML = `
+  //     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  //       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+  //     </svg>
+  //   `;
     
-    document.body.appendChild(button);
-  }
+  //   document.body.appendChild(button);
+  // }
 
   bindEvents() {
     // Toggle chat

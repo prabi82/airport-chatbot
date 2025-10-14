@@ -4,17 +4,14 @@ export async function GET() {
   const css = `
 /* Base Widget Styles */
 .chat-widget {
-  position: fixed;
   z-index: 9999;
-  width: 350px;
-  height: 500px;
+  height: 100vh;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  transform: translateY(100%);
-  opacity: 0;
+  opacity: 1;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
@@ -38,13 +35,13 @@ export async function GET() {
 
 /* Header Styles */
 .chat-widget__header {
-  display: flex;
+  display: absolute;
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  background: linear-gradient(135deg, #c48d0f, #fab416);
   color: white;
-  border-radius: 12px 12px 0 0;
+  border-radius:  0 !important;
   min-height: 60px;
 }
 
@@ -63,7 +60,7 @@ export async function GET() {
   font-size: 20px;
   cursor: pointer;
   padding: 4px;
-  border-radius: 4px;
+  border-radius: 0;
   transition: background 0.2s;
   width: 32px;
   height: 32px;
@@ -120,7 +117,7 @@ export async function GET() {
 }
 
 .chat-message--user .chat-message__content {
-  background: #3b82f6;
+  background: #fab416;
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -195,7 +192,7 @@ export async function GET() {
 
 /* Link Styles */
 .chat-link {
-  color: #2563eb;
+  color: #d49e10;
   text-decoration: none;
   font-weight: 500;
   border-bottom: 1px solid transparent;
@@ -204,31 +201,31 @@ export async function GET() {
 }
 
 .chat-link:hover {
-  color: #1d4ed8;
-  border-bottom-color: #2563eb;
-  background-color: rgba(37, 99, 235, 0.05);
+  color: #c48d0f;
+  border-bottom-color: #d49e10;
+  background-color: rgba(250, 180, 22, 0.1);
   padding: 2px 4px;
   border-radius: 4px;
   margin: -2px -4px;
 }
 
 .chat-link:active {
-  color: #1e40af;
+  color: #a8790c;
 }
 
 /* Source Link Container */
 .source-link-container {
   margin-top: 12px;
   padding: 10px 12px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: #fff9e6;
+  border: 1px solid #ffe066;
   border-radius: 8px;
-  border-left: 4px solid #0ea5e9;
+  border-left: 4px solid #fab416;
   font-size: 13px;
 }
 
 .source-link-container strong {
-  color: #0c4a6e;
+  color: #c48d0f;
 }
 
 /* Separate Link Message Styles */
@@ -282,7 +279,7 @@ export async function GET() {
 
 /* Dark theme link styles */
 .chat-widget--dark .chat-link {
-  color: #60a5fa;
+  color: #d49e10;
 }
 
 .chat-widget--dark .chat-link:hover {
@@ -292,9 +289,9 @@ export async function GET() {
 }
 
 .chat-widget--dark .source-link-container {
-  background: #1e3a8a;
-  border-color: #1e40af;
-  border-left-color: #3b82f6;
+  background: #c48d0f;    
+  border-color: #d49e10;   
+  border-left-color: #ffcc33;
 }
 
 .chat-widget--dark .source-link-container strong {
@@ -333,14 +330,14 @@ export async function GET() {
 }
 
 .chat-widget__input:focus {
-  border-color: #3b82f6;
+  border-color: #fab416;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .chat-widget__send {
   width: 40px;
   height: 40px;
-  background: #3b82f6;
+  background: #fab416;
   color: white;
   border: none;
   border-radius: 50%;
@@ -353,7 +350,7 @@ export async function GET() {
 }
 
 .chat-widget__send:hover {
-  background: #2563eb;
+  background: #fab400;
   transform: scale(1.05);
 }
 
@@ -367,7 +364,7 @@ export async function GET() {
   z-index: 9998;
   width: 60px;
   height: 60px;
-  background: #3b82f6;
+  background: #fab416;
   color: white;
   border: none;
   border-radius: 50%;
@@ -375,14 +372,14 @@ export async function GET() {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 20px rgba(250, 180, 22, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   animation: buttonPulse 2s infinite;
 }
 
 .chat-button:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 25px rgba(250, 180, 22, 0.4);
 }
 
 .chat-button--bottom-right {
@@ -482,12 +479,7 @@ export async function GET() {
 
 /* Responsive Design */
 @media (max-width: 480px) {
-  .chat-widget {
-    width: calc(100vw - 40px);
-    height: calc(100vh - 40px);
-    max-width: 400px;
-    max-height: 600px;
-  }
+ 
   
   .chat-button {
     width: 50px;
