@@ -862,9 +862,85 @@ export class AIService {
       this.responseCache.delete(cacheKey);
     }
 
+    // Baggage query handler - MUST run BEFORE flight handler to catch baggage queries
+    const lowerMessage = message.toLowerCase();
+    const baggageKeywords = ['baggage', 'luggage', 'suitcase', 'bag', 'lost', 'delayed', 'damaged', 'claim', 'complaint'];
+    const hasBaggageKeyword = baggageKeywords.some(keyword => lowerMessage.includes(keyword));
+    const hasComplaintId = /[A-Z]{2,}\d{5,}/i.test(message) || lowerMessage.includes('complaint id') || lowerMessage.includes('complaint number') || lowerMessage.includes('reference number');
+    const isBaggageQueryForced = hasBaggageKeyword || (hasComplaintId && (lowerMessage.includes('baggage') || lowerMessage.includes('luggage')));
+    
+    if (isBaggageQueryForced) {
+      const processingTime = Date.now() - startTime;
+      
+      // Extract complaint ID if present
+      const complaintIdMatch = message.match(/[A-Z]{2,}\d{5,}/i);
+      const complaintId = complaintIdMatch ? complaintIdMatch[0] : null;
+      
+      // Check if this is a complaint status query
+      const isComplaintStatusQuery = hasComplaintId || lowerMessage.includes('update') || lowerMessage.includes('status') || lowerMessage.includes('track');
+      
+      let baggageResponse = '';
+      
+      if (isComplaintStatusQuery && complaintId) {
+        baggageResponse = `🛄 **Baggage Complaint Status Inquiry**\n\n`;
+        baggageResponse += `I see you have a baggage complaint with ID: **${complaintId}**\n\n`;
+        baggageResponse += `**📞 To Check Your Complaint Status:**\n\n`;
+        baggageResponse += `• **Contact Your Airline Directly:** Your airline's baggage services department can provide the most current status of your complaint\n`;
+        baggageResponse += `• **Airline Baggage Desk:** Visit your airline's baggage services desk at the airport for immediate assistance\n`;
+        baggageResponse += `• **Reference Your Complaint ID:** When contacting, provide your complaint ID (${complaintId}) for faster service\n\n`;
+        baggageResponse += `**📍 At Muscat International Airport:**\n`;
+        baggageResponse += `• **Baggage Services Desk:** Located in the arrivals hall\n`;
+        baggageResponse += `• **Megaton Cargo Services:** For cargo/baggage sealing services - WhatsApp: +968 96585377 / +968 79220113\n`;
+        baggageResponse += `• **General Airport Support:** +968 24351234\n\n`;
+        baggageResponse += `**💡 Important:** For real-time updates on your baggage complaint, I recommend contacting your airline directly as they have access to the latest tracking information for complaint ID ${complaintId}.`;
+      } else if (lowerMessage.includes('lost') || lowerMessage.includes('missing')) {
+        baggageResponse = `🛄 **Lost or Missing Baggage Assistance**\n\n`;
+        baggageResponse += `**🚨 Immediate Steps:**\n\n`;
+        baggageResponse += `1. **Report Immediately:** Go to your airline's baggage services desk in the arrivals hall as soon as possible\n`;
+        baggageResponse += `2. **File a Report:** Complete a Property Irregularity Report (PIR) with your airline\n`;
+        baggageResponse += `3. **Keep Your Documents:** Save your baggage claim tags, boarding pass, and any receipts\n`;
+        baggageResponse += `4. **Get a Reference Number:** Your airline will provide a complaint/reference number - keep this safe\n\n`;
+        baggageResponse += `**📞 Contact Information:**\n`;
+        baggageResponse += `• **Your Airline's Baggage Services:** Contact them directly for updates\n`;
+        baggageResponse += `• **Airport Support:** +968 24351234\n`;
+        baggageResponse += `• **Megaton Cargo Services:** WhatsApp: +968 96585377 / +968 79220113 (for cargo/baggage sealing)\n\n`;
+        baggageResponse += `**📍 Location:** Baggage services desks are located in the arrivals hall at Muscat International Airport.\n\n`;
+        baggageResponse += `**⏰ Important:** Report lost baggage as soon as possible - the sooner you report, the better the chances of recovery.`;
+      } else if (lowerMessage.includes('damaged')) {
+        baggageResponse = `🛄 **Damaged Baggage Assistance**\n\n`;
+        baggageResponse += `**🚨 Immediate Steps:**\n\n`;
+        baggageResponse += `1. **Report Before Leaving:** Report damage to your airline's baggage services desk before leaving the airport\n`;
+        baggageResponse += `2. **Take Photos:** Document the damage with photos\n`;
+        baggageResponse += `3. **File a Report:** Complete a Property Irregularity Report (PIR) with your airline\n`;
+        baggageResponse += `4. **Get a Reference Number:** Keep your complaint/reference number for follow-up\n\n`;
+        baggageResponse += `**📞 Contact Information:**\n`;
+        baggageResponse += `• **Your Airline's Baggage Services:** Contact them directly for compensation procedures\n`;
+        baggageResponse += `• **Airport Support:** +968 24351234\n\n`;
+        baggageResponse += `**📍 Location:** Baggage services desks are located in the arrivals hall.`;
+      } else {
+        baggageResponse = `🛄 **Baggage Services Information**\n\n`;
+        baggageResponse += `**📞 For Baggage Inquiries:**\n\n`;
+        baggageResponse += `• **Your Airline's Baggage Services:** Contact your airline directly for baggage-related questions\n`;
+        baggageResponse += `• **Airport Support:** +968 24351234\n`;
+        baggageResponse += `• **Megaton Cargo Services:** WhatsApp: +968 96585377 / +968 79220113 (for cargo/baggage sealing services)\n\n`;
+        baggageResponse += `**📍 Baggage Services Location:**\n`;
+        baggageResponse += `Baggage services desks are located in the arrivals hall at Muscat International Airport.\n\n`;
+        baggageResponse += `**For specific baggage issues (lost, damaged, delayed), please contact your airline's baggage services desk at the airport.**`;
+      }
+      
+      return {
+        message: baggageResponse,
+        success: true,
+        provider: 'baggage-handler',
+        processingTime,
+        knowledgeBaseUsed: false,
+        sources: ['https://www.muscatairport.co.om/en/content/baggage'],
+        kbEntryId: undefined
+      };
+    }
+
     // Enhanced flight detection - MUST run BEFORE greeting handler to catch flight queries that start with "Hi"
     // Check for airline names, cities, and various flight-related patterns
-    const lowerMessage = message.toLowerCase();
     const commonAirlines = ['air india', 'emirates', 'oman air', 'salamair', 'qatar', 'etihad', 'flydubai', 'indigo', 'spicejet', 'air arabia', 'kuwait airways', 'saudi arabian', 'gulf air', 'turkish airlines', 'british airways', 'lufthansa', 'klm', 'air france'];
     const commonCities = ['delhi', 'mumbai', 'dubai', 'abu dhabi', 'doha', 'kuwait', 'riyadh', 'jeddah', 'istanbul', 'london', 'frankfurt', 'amsterdam', 'paris', 'muscat', 'salalah'];
     const hasAirline = commonAirlines.some(airline => lowerMessage.includes(airline));
@@ -873,9 +949,10 @@ export class AIService {
     const hasFlightKeywords = lowerMessage.includes('flight') || lowerMessage.includes('departure') || lowerMessage.includes('arrival') || lowerMessage.includes('flight status') || lowerMessage.includes('flight number') || lowerMessage.includes('departed') || lowerMessage.includes('departure time') || lowerMessage.includes('arrival time');
     const hasFlightNumber = /wy\s*\d+|om\s*\d+|ai\s*\d+|ek\s*\d+|qr\s*\d+|ey\s*\d+|fz\s*\d+|6e\s*\d+|sg\s*\d+|flight\s*\d+/i.test(message);
     
-    // Exclude parking and other non-flight queries from flight detection
+    // Exclude parking, baggage, and other non-flight queries from flight detection
     const isParkingContext = lowerMessage.includes('park') || lowerMessage.includes('car') || lowerMessage.includes('vehicle');
-    const isFlightQueryForced = !isParkingContext && (
+    const isBaggageContext = lowerMessage.includes('baggage') || lowerMessage.includes('luggage') || lowerMessage.includes('suitcase') || lowerMessage.includes('lost') || lowerMessage.includes('complaint');
+    const isFlightQueryForced = !isParkingContext && !isBaggageContext && (
                                 hasFlightKeywords || 
                                 hasFlightNumber ||
                                 (hasTimeQuery && (hasAirline || hasCity || lowerMessage.includes('flight') || lowerMessage.includes('depart'))) ||
