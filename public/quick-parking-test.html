@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Parking Rate Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-box { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
+        .query { color: #0066cc; font-weight: bold; }
+        .response { background: #f9f9f9; padding: 10px; margin: 5px 0; }
+        .rate-found { color: green; font-weight: bold; }
+        .rate-missing { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🅿️ Parking Rate Test</h1>
+    
+    <div class="test-box">
+        <div class="query">Query: "How much does it cost to park for 1 hour at Muscat International Airport?"</div>
+        <div id="response1" class="response">Loading...</div>
+        <div id="status1"></div>
+    </div>
+    
+    <div class="test-box">
+        <div class="query">Query: "What is the hourly parking rate?"</div>
+        <div id="response2" class="response">Loading...</div>
+        <div id="status2"></div>
+    </div>
+    
+    <div class="test-box">
+        <div class="query">Query: "What are the parking rates at the airport?"</div>
+        <div id="response3" class="response">Loading...</div>
+        <div id="status3"></div>
+    </div>
+
+    <script>
+        async function testParkingQuery(query, responseId, statusId) {
+            try {
+                const response = await fetch('/api/chat/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: query,
+                        sessionId: 'parking-test-' + Math.random()
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById(responseId).innerHTML = result.response;
+                    
+                    const hasSpecificRates = result.response.includes('OMR') || 
+                                           result.response.includes('0.200') || 
+                                           result.response.includes('2.000') ||
+                                           result.response.includes('12.000');
+                    
+                    const statusDiv = document.getElementById(statusId);
+                    if (hasSpecificRates) {
+                        statusDiv.innerHTML = '<span class="rate-found">✅ SPECIFIC RATES FOUND</span>';
+                        statusDiv.innerHTML += `<br>Provider: ${result.provider}`;
+                        statusDiv.innerHTML += `<br>Sources: ${result.sources?.length || 0}`;
+                    } else {
+                        statusDiv.innerHTML = '<span class="rate-missing">❌ NO SPECIFIC RATES</span>';
+                        statusDiv.innerHTML += `<br>Provider: ${result.provider}`;
+                        statusDiv.innerHTML += `<br>Sources: ${result.sources?.length || 0}`;
+                    }
+                } else {
+                    document.getElementById(responseId).innerHTML = `Error: ${response.status}`;
+                    document.getElementById(statusId).innerHTML = '<span class="rate-missing">❌ API ERROR</span>';
+                }
+            } catch (error) {
+                document.getElementById(responseId).innerHTML = `Error: ${error.message}`;
+                document.getElementById(statusId).innerHTML = '<span class="rate-missing">❌ NETWORK ERROR</span>';
+            }
+        }
+        
+        // Run tests when page loads
+        window.onload = function() {
+            testParkingQuery("How much does it cost to park for 1 hour at Muscat International Airport?", "response1", "status1");
+            
+            setTimeout(() => {
+                testParkingQuery("What is the hourly parking rate?", "response2", "status2");
+            }, 2000);
+            
+            setTimeout(() => {
+                testParkingQuery("What are the parking rates at the airport?", "response3", "status3");
+            }, 4000);
+        };
+    </script>
+</body>
+</html>
+
+

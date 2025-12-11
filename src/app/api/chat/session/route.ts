@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database';
 
+// Check if IP is blocked
+async function isIPBlocked(ipAddress: string): Promise<boolean> {
+  try {
+    const blocked = await prisma.blockedIP.findUnique({
+      where: { ipAddress, isActive: true }
+    });
+    return !!blocked;
+  } catch (error) {
+    console.error('[Session API] Error checking blocked IP:', error);
+    return false; // Allow on error to avoid blocking legitimate users
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('🔗 Session API endpoint called');
@@ -12,6 +25,19 @@ export async function POST(request: NextRequest) {
     // Get client IP address
     const forwarded = request.headers.get('x-forwarded-for');
     const ipAddress = forwarded ? forwarded.split(',')[0] : '127.0.0.1';
+
+    // Check if IP is blocked
+    if (await isIPBlocked(ipAddress)) {
+      console.warn(`🚫 Blocked IP attempt: ${ipAddress}`);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Access denied',
+          message: 'Your IP address has been blocked due to suspicious activity.'
+        },
+        { status: 403 }
+      );
+    }
 
     // Generate unique session ID
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

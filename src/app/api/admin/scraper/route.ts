@@ -6,9 +6,9 @@ import { prisma } from '@/lib/database';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '50'); // Increased default from 10 to 50
     
-    // Get recent scraping history
+    // Get recent scraping history with entry counts
     const scrapingHistory = await prisma.scrapingCache.findMany({
       orderBy: { lastScraped: 'desc' },
       take: limit,
@@ -20,6 +20,23 @@ export async function GET(request: NextRequest) {
         createdAt: true
       }
     });
+
+    // Get knowledge base entry counts for each source
+    const scrapingHistoryWithCounts = await Promise.all(
+      scrapingHistory.map(async (item) => {
+        const entryCount = await prisma.knowledgeBase.count({
+          where: {
+            sourceUrl: item.url,
+            isActive: true
+          }
+        });
+        
+        return {
+          ...item,
+          entryCount
+        };
+      })
+    );
 
     // Get knowledge base stats
     const knowledgeStats = await prisma.knowledgeBase.groupBy({
@@ -35,7 +52,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        scrapingHistory,
+        scrapingHistory: scrapingHistoryWithCounts,
         knowledgeStats: knowledgeStats.map(stat => ({
           category: stat.category,
           count: stat._count.id

@@ -1,13 +1,7 @@
-Access Roads & Directions (10 questions)
+Access Roads & Directions (4 questions)
 How do I get to Muscat Airport from the city center?
 What's the best route to Muscat International Airport from Seeb?
-Which highway should I take to reach the airport?
-How do I find Muscat Airport when driving from other parts of Oman?
-Is there a map showing directions to the airport?
 What road connects Muscat Airport to the rest of the country?
-Where is Muscat Airport located on Sultan Qaboos Highway?
-How do I reach the airport from Burj Al Sahwa roundabout?
-What are the driving directions to Muscat Airport?
 Which side of the highway is the airport on when coming from Muscat?
 
 Pick-up & Drop-off (8 questions)

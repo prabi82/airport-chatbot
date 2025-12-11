@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function AdminLogin() {
   const [credentials, setCredentials] = useState({
-    username: '',
+    email: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
@@ -29,10 +29,10 @@ export default function AdminLogin() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Store token and redirect to dashboard
-        localStorage.setItem('adminToken', data.token);
-        localStorage.setItem('adminUser', JSON.stringify(data.admin));
+        // Token is stored in HTTP-only cookie by the server
+        // Just redirect to dashboard
         router.push('/admin/dashboard');
+        router.refresh(); // Refresh to update auth state
       } else {
         setError(data.error || 'Login failed');
       }
@@ -73,18 +73,18 @@ export default function AdminLogin() {
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email
               </label>
               <input
-                id="username"
-                name="username"
-                type="text"
+                id="email"
+                name="email"
+                type="email"
                 required
-                value={credentials.username}
+                value={credentials.email}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your username"
+                placeholder="Enter your email"
               />
             </div>
 
@@ -124,7 +124,7 @@ export default function AdminLogin() {
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
             <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
             <div className="text-xs text-blue-600 space-y-1">
-              <p><strong>Username:</strong> admin</p>
+              <p><strong>Email:</strong> admin@omanairports.co.om</p>
               <p><strong>Password:</strong> admin123</p>
             </div>
           </div>

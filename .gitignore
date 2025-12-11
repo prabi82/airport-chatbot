@@ -176,3 +176,10 @@ Thumbs.db
 .turbo
 
 .vercel
+
+# Large backup files
+*.zip
+chatbot_backup.zip
+body.zip
+*.backup
+neon-backup-*.json

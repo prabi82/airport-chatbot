@@ -28,7 +28,7 @@ class OmanAirportsChatWidget {
   async init() {
     await this.loadStyles();
     this.createWidget();
-    // this.createChatButton();
+    this.createChatButton();
     this.bindEvents();
     await this.createSession();
   }
@@ -46,7 +46,29 @@ class OmanAirportsChatWidget {
   createWidget() {
     const widget = document.createElement('div');
     widget.id = 'omanairports-chat-widget';
-    widget.className = `chat-widget chat-widget--${this.config.theme} chat-widget--${this.config.position}`;
+    
+    // Check if we're in iframe mode
+    const isIframe = this.config.iframeMode || window !== window.top;
+    
+    if (isIframe) {
+      // Full screen mode for iframe
+      widget.className = `chat-widget chat-widget--${this.config.theme} chat-widget--iframe`;
+      widget.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        transform: none !important;
+        opacity: 1 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        z-index: 9999 !important;
+      `;
+    } else {
+      // Normal widget mode
+      widget.className = `chat-widget chat-widget--${this.config.theme} chat-widget--${this.config.position}`;
+    }
     
     widget.innerHTML = `
       <div class="chat-widget__body">
@@ -75,28 +97,36 @@ class OmanAirportsChatWidget {
     `;
 
     document.body.appendChild(widget);
+    
+    // Auto-open in iframe mode
+    if (isIframe) {
+      this.isOpen = true;
+      widget.classList.add('chat-widget--open');
+    }
   }
 
-  // createChatButton() {
-  //   const button = document.createElement('div');
-  //   button.id = 'omanairports-chat-button';
-  //   button.className = `chat-button chat-button--${this.config.position}`;
-  //   button.innerHTML = `
-  //     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-  //       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-  //     </svg>
-  //   `;
+  createChatButton() {
+    // Don't create chat button in iframe mode
+    const isIframe = this.config.iframeMode || window !== window.top;
+    if (isIframe) {
+      return;
+    }
     
-  //   document.body.appendChild(button);
-  // }
+    const button = document.createElement('div');
+    button.id = 'omanairports-chat-button';
+    button.className = `chat-button chat-button--${this.config.position}`;
+    button.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    `;
+    
+    document.body.appendChild(button);
+  }
 
   bindEvents() {
-    // Toggle chat
+    // Toggle chat (only for chat button, no close button)
     document.getElementById('omanairports-chat-button')?.addEventListener('click', () => {
-      this.toggleChat();
-    });
-
-    document.getElementById('chat-widget-close')?.addEventListener('click', () => {
       this.toggleChat();
     });
 
@@ -232,6 +262,35 @@ class OmanAirportsChatWidget {
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     
+    // Add thumbs up/down for bot messages
+    if (type === 'bot') {
+      const actions = document.createElement('div');
+      actions.style.marginTop = '6px';
+      actions.innerHTML = `
+        <button class="thumb-btn" data-feedback="up" title="Helpful" style="margin-right:8px">👍</button>
+        <button class="thumb-btn" data-feedback="down" title="Not helpful">👎</button>
+      `;
+      contentDiv.appendChild(actions);
+      actions.querySelectorAll('.thumb-btn').forEach(btn=>{
+        btn.addEventListener('click', async () => {
+          const isHelpful = btn.getAttribute('data-feedback') === 'up';
+          try {
+            await fetch(`${this.config.apiUrl}/chat/send`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionId: this.sessionId, isHelpful })
+            });
+            actions.innerHTML = isHelpful ? 'Thanks for your feedback!' : 'Feedback noted.';
+          } catch (e) {
+            console.error('Feedback error', e);
+          }
+        });
+      });
+      
+      // Add disclaimer after bot messages
+      this.addDisclaimer();
+    }
+
     // Log for debugging
     console.log('✅ Message added:', {
       type,
@@ -439,6 +498,31 @@ class OmanAirportsChatWidget {
       return 'Official Source';
     }
   }
+
+  // Add disclaimer after bot messages
+  addDisclaimer() {
+    const messagesContainer = document.getElementById('chat-widget-messages');
+    const disclaimerDiv = document.createElement('div');
+    disclaimerDiv.className = 'chat-message chat-message--bot chat-message--disclaimer';
+    
+    const time = new Date().toLocaleTimeString();
+    
+    disclaimerDiv.innerHTML = `
+      <div class="chat-message__content">
+        <div class="disclaimer-container">
+          <div class="disclaimer-text">
+            <strong>⚠️ Disclaimer:</strong> This is AI generated content, to ensure accuracy and get the latest information please visit the website . For further inquiries, please contact Customer Service at <a href="tel:+96824351234" class="disclaimer-phone">+968 24351234</a>
+          </div>
+        </div>
+      </div>
+      <div class="chat-message__time">${time}</div>
+    `;
+
+    messagesContainer.appendChild(disclaimerDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    
+    console.log('✅ Disclaimer added successfully');
+  }
 }
 
 // Auto-initialize widget
@@ -449,4 +533,4 @@ if (typeof window !== 'undefined') {
   if (window.omanairportsChatConfig) {
     new OmanAirportsChatWidget(window.omanairportsChatConfig);
   }
-} 
+}

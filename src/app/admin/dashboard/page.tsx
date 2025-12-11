@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { KnowledgeItem } from '@/types';
+import dynamic from 'next/dynamic';
+const AdminNav = dynamic(() => import('./AdminNav'), { ssr: false });
 
 interface SystemHealth {
   database: boolean;
@@ -42,9 +44,10 @@ interface Analytics {
 
 
 
-export default function AdminDashboard() {
+function AdminDashboardInner() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,7 +71,7 @@ export default function AdminDashboard() {
   const [scrapeCategory, setScrapeCategory] = useState('');
   const [scrapingStatus, setScrapingStatus] = useState('idle');
   const [scrapingMessage, setScrapingMessage] = useState('');
-  const [scrapingHistory, setScrapingHistory] = useState<{ title: string; url: string; lastScraped: string }[]>([]);
+  const [scrapingHistory, setScrapingHistory] = useState<{ title: string; url: string; lastScraped: string; entryCount?: number }[]>([]);
   const [knowledgeStats, setKnowledgeStats] = useState<{ category: string; count: number }[]>([]);
   const [totalKnowledgeEntries, setTotalKnowledgeEntries] = useState(0);
   const [apiQuotas, setApiQuotas] = useState<{ [provider: string]: QuotaStatus }>({});
@@ -88,6 +91,13 @@ export default function AdminDashboard() {
   const [entriesPerPage] = useState(15);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Source entries modal state
+  const [showSourceEntries, setShowSourceEntries] = useState(false);
+  const [selectedSourceUrl, setSelectedSourceUrl] = useState('');
+  const [selectedSourceTitle, setSelectedSourceTitle] = useState('');
+  const [sourceEntries, setSourceEntries] = useState<KnowledgeItem[]>([]);
+  const [loadingSourceEntries, setLoadingSourceEntries] = useState(false);
   
   // Category management state
   const [showCategoryManager, setShowCategoryManager] = useState(false);
@@ -112,6 +122,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     checkAuthentication();
   }, []);
+
+  // Handle URL tab parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'analytics', 'knowledge', 'agents', 'system'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -139,7 +157,9 @@ export default function AdminDashboard() {
   const checkAuthentication = async () => {
     try {
       const response = await fetch('/api/admin/auth');
-      if (response.ok) {
+      const data = await response.json();
+      
+      if (response.ok && data.authenticated) {
         setIsAuthenticated(true);
       } else {
         router.push('/admin/login');
@@ -240,9 +260,10 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchScrapingHistory = async () => {
+  const fetchScrapingHistory = async (showAll = false) => {
     try {
-      const response = await fetch('/api/admin/scraper');
+      const url = showAll ? '/api/admin/scraper?limit=1000' : '/api/admin/scraper';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setScrapingHistory(data.data.scrapingHistory || []);
@@ -335,7 +356,11 @@ export default function AdminDashboard() {
   };
 
   const handleCategoryFilter = (category: string) => {
-    setSelectedCategoryFilter(category);
+    // Normalize category casing to match stored entries
+    const normalized = (category || '').toLowerCase();
+    const match = knowledgeBase.find(e => (e.category || '').toLowerCase() === normalized);
+    const finalCategory = match ? match.category : category;
+    setSelectedCategoryFilter(finalCategory);
     setActiveTab('knowledge'); // Switch to knowledge tab to show filtered results
   };
 
@@ -758,6 +783,37 @@ export default function AdminDashboard() {
     setCategoryForm({ name: '', description: '', icon: '' });
   };
 
+  // Function to fetch entries for a specific source
+  const fetchEntriesBySource = async (sourceUrl: string, sourceTitle: string) => {
+    setSelectedSourceUrl(sourceUrl);
+    setSelectedSourceTitle(sourceTitle);
+    setShowSourceEntries(true);
+    setLoadingSourceEntries(true);
+    
+    try {
+      const response = await fetch(`/api/admin/knowledge?sourceUrl=${encodeURIComponent(sourceUrl)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSourceEntries(data.items || []);
+      } else {
+        console.error('Failed to fetch source entries');
+        setSourceEntries([]);
+      }
+    } catch (error) {
+      console.error('Error fetching source entries:', error);
+      setSourceEntries([]);
+    } finally {
+      setLoadingSourceEntries(false);
+    }
+  };
+
+  const handleCloseSourceEntries = () => {
+    setShowSourceEntries(false);
+    setSelectedSourceUrl('');
+    setSelectedSourceTitle('');
+    setSourceEntries([]);
+  };
+
   // Fetch categories when category manager is opened
   useEffect(() => {
     if (showCategoryManager) {
@@ -787,66 +843,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Oman Airports Admin</h1>
-              <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                Dashboard
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
-            {[
-              { id: 'overview', name: 'Overview' },
-              { id: 'analytics', name: 'Analytics' },
-              { id: 'knowledge', name: 'Knowledge Base' },
-              { id: 'agents', name: 'Agents' },
-              { id: 'system', name: 'System' },
-              { id: 'unanswered', name: 'Unanswered' }
-            ].map((tab) => {
-              const isActive = tab.id === 'unanswered' 
-                ? pathname === '/admin/unanswered'
-                : activeTab === tab.id;
-              
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    if (tab.id === 'unanswered') {
-                      router.push('/admin/unanswered');
-                    } else {
-                      setActiveTab(tab.id);
-                    }
-                  }}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    isActive
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.name}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
-
+      <AdminNav activeTab={activeTab} onTabChange={setActiveTab} />
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
@@ -1277,10 +1274,16 @@ export default function AdminDashboard() {
                           )}
                         </button>
                         <button
-                          onClick={fetchScrapingHistory}
+                          onClick={() => fetchScrapingHistory(false)}
                           className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                           🔄 Refresh History
+                        </button>
+                        <button
+                          onClick={() => fetchScrapingHistory(true)}
+                          className="inline-flex items-center px-4 py-2 border border-purple-300 text-sm font-medium rounded-md shadow-sm text-purple-700 bg-purple-50 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                        >
+                          📋 Show All Sources
                         </button>
                       </div>
                     </div>
@@ -1295,14 +1298,35 @@ export default function AdminDashboard() {
 
                   {/* Scraping History */}
                   <div className="mb-6">
-                    <h4 className="text-md font-medium text-gray-900 mb-3">📊 Scraping History</h4>
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="text-md font-medium text-gray-900">📊 Scraping History</h4>
+                      <div className="text-sm text-gray-600">
+                        <span>Showing {scrapingHistory.length} source{scrapingHistory.length !== 1 ? 's' : ''}</span>
+                        {scrapingHistory.length > 0 && scrapingHistory.some(item => item.entryCount !== undefined) && (
+                          <span className="ml-2 text-green-600 font-medium">
+                            • {scrapingHistory.reduce((total, item) => total + (item.entryCount || 0), 0)} total entries
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     <div className="bg-gray-50 rounded-lg p-4">
                       {scrapingHistory.length > 0 ? (
                         <div className="space-y-3">
                           {scrapingHistory.map((item, index) => (
                             <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
                               <div className="flex-1">
-                                <div className="text-sm font-medium text-gray-900">{item.title || 'Untitled'}</div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className="text-sm font-medium text-gray-900">{item.title || 'Untitled'}</div>
+                                  {item.entryCount !== undefined && (
+                                    <button
+                                      onClick={() => fetchEntriesBySource(item.url, item.title || 'Untitled')}
+                                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 transition-colors cursor-pointer"
+                                      title="Click to view entries from this source"
+                                    >
+                                      {item.entryCount} entries
+                                    </button>
+                                  )}
+                                </div>
                                 <div className="text-sm text-blue-600 hover:underline">
                                   <a href={item.url} target="_blank" rel="noopener noreferrer">{item.url}</a>
                                 </div>
@@ -1916,6 +1940,139 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+
+              {/* Source Entries Modal */}
+              {showSourceEntries && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">📋 Knowledge Base Entries</h2>
+                        <p className="text-sm text-gray-600 mt-1">
+                          From: <span className="font-medium">{selectedSourceTitle}</span>
+                        </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          <a href={selectedSourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            {selectedSourceUrl}
+                          </a>
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleCloseSourceEntries}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <span className="sr-only">Close</span>
+                        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {loadingSourceEntries ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="mt-4 text-gray-600">Loading entries...</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {sourceEntries.length > 0 ? (
+                          <>
+                            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                              <p className="text-sm text-blue-800">
+                                <strong>{sourceEntries.length}</strong> knowledge base {sourceEntries.length === 1 ? 'entry' : 'entries'} found from this source
+                              </p>
+                            </div>
+                            
+                            {sourceEntries.map((entry, index) => (
+                              <div key={entry.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="flex-1">
+                                    <h4 className="text-sm font-medium text-gray-900 mb-2">
+                                      {index + 1}. {entry.question}
+                                    </h4>
+                                    <p className="text-sm text-gray-600 mb-3">{entry.answer}</p>
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                      <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                        {entry.category}
+                                      </span>
+                                      {entry.subcategory && (
+                                        <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                                          {entry.subcategory}
+                                        </span>
+                                      )}
+                                      {entry.priority && entry.priority > 1 && (
+                                        <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
+                                          Priority: {entry.priority}
+                                        </span>
+                                      )}
+                                      <span className={`inline-block text-xs px-2 py-1 rounded ${
+                                        entry.dataSource === 'manual' ? 'bg-purple-100 text-purple-800' :
+                                        entry.dataSource === 'scraping' ? 'bg-orange-100 text-orange-800' :
+                                        'bg-indigo-100 text-indigo-800'
+                                      }`}>
+                                        {entry.dataSource === 'manual' ? '✏️ Manual' :
+                                         entry.dataSource === 'scraping' ? '🌐 Scraped' :
+                                         '📥 Imported'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col items-end ml-4">
+                                    <span className="text-xs text-gray-500 mb-2">
+                                      {entry.lastUpdated}
+                                    </span>
+                                    <div className="flex space-x-2">
+                                      <button
+                                        onClick={() => {
+                                          handleEditKnowledgeEntry(entry);
+                                          handleCloseSourceEntries();
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800 text-sm"
+                                        title="Edit this entry"
+                                      >
+                                        ✏️ Edit
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          if (confirm('Delete this entry?')) {
+                                            handleDeleteKnowledgeEntry(entry.id);
+                                            // Refresh the source entries
+                                            fetchEntriesBySource(selectedSourceUrl, selectedSourceTitle);
+                                          }
+                                        }}
+                                        className="text-red-600 hover:text-red-800 text-sm"
+                                        title="Delete this entry"
+                                      >
+                                        🗑️ Delete
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <div className="text-center py-8">
+                            <div className="text-gray-400 text-6xl mb-4">📄</div>
+                            <p className="text-gray-500 mb-4">No knowledge base entries found for this source.</p>
+                            <p className="text-sm text-gray-400">
+                              This might indicate the entries were deleted or the source URL has changed.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        onClick={handleCloseSourceEntries}
+                        className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md text-sm font-medium"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1959,8 +2116,30 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+
+          {/* Thumbs-down (Negative) Feedback Tab */}
+          {activeTab === 'unanswered' && (
+            <div className="space-y-6">
+              <div className="bg-white shadow rounded-lg">
+                <div className="px-4 py-5 sm:p-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Thumbs-down Responses</h3>
+                  <p className="text-sm text-gray-600 mb-4">Shows recent feedback where users marked responses as not helpful.</p>
+                  {/* Minimal fetcher using existing API: GET /api/admin/unanswered (placeholder) or feedback endpoint */}
+                  <p className="text-sm text-gray-400">Use Sessions → View to inspect the exact Q&A and improve the KB entry.</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
   );
-} 
+}
+
+export default function AdminDashboard() {
+  return (
+    <Suspense fallback={null}>
+      <AdminDashboardInner />
+    </Suspense>
+  );
+}

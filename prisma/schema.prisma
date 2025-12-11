@@ -2,196 +2,196 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
-  engineType = "binary"
-  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "linux-musl", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+  provider        = "prisma-client-js"
+  engineType      = "binary"
+  binaryTargets   = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x", "linux-musl", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
   previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
   extensions = [vector]
 }
 
 model ChatSession {
-  id          String   @id @default(cuid())
-  sessionId   String   @unique
-  userAgent   String?
-  ipAddress   String?
-  language    String   @default("en")
-  needsHuman  Boolean  @default(false) // Flag for human assistance
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  messages    ChatMessage[]
-  handoffs    ChatHandoff[]
-  agentChats  AgentChat[]
-  
+  id         String   @id @default(cuid())
+  sessionId  String   @unique
+  userAgent  String?
+  ipAddress  String?
+  language   String   @default("en")
+  needsHuman Boolean  @default(false) // Flag for human assistance
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  messages   ChatMessage[]
+  handoffs   ChatHandoff[]
+  agentChats AgentChat[]
+
   @@map("chat_sessions")
 }
 
 model ChatMessage {
-  id          String   @id @default(cuid())
-  sessionId   String
-  message     String
-  response    String
-  queryType   String?
+  id             String   @id @default(cuid())
+  sessionId      String
+  message        String
+  response       String
+  queryType      String?
   processingTime Int?
-  isSuccessful Boolean @default(true)
-  kbEntryId   String?
-  createdAt   DateTime @default(now())
-  
-  session     ChatSession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+  isSuccessful   Boolean  @default(true)
+  kbEntryId      String?
+  createdAt      DateTime @default(now())
+
+  session        ChatSession    @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
   knowledgeEntry KnowledgeBase? @relation(fields: [kbEntryId], references: [id])
-  
+
   @@map("chat_messages")
 }
 
 model KnowledgeBase {
-  id          String   @id @default(cuid())
+  id          String                 @id @default(cuid())
   category    String
   subcategory String?
   question    String
   answer      String
   keywords    String[]
   embedding   Unsupported("vector")?
-  sourceUrl   String?  // URL where this knowledge was scraped from
-  dataSource  String   @default("manual") // "manual", "scraping", "import" - tracks origin of data
-  priority    Int      @default(1)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  sourceUrl   String? // URL where this knowledge was scraped from
+  dataSource  String                 @default("manual") // "manual", "scraping", "import" - tracks origin of data
+  priority    Int                    @default(1)
+  isActive    Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
   // Relations
   chatMessages ChatMessage[]
-  
+
   @@map("knowledge_base")
 }
 
 model FlightCache {
-  id            String   @id @default(cuid())
-  flightNumber  String   @unique
-  flightData    Json
-  expiresAt     DateTime
-  createdAt     DateTime @default(now())
-  
+  id           String   @id @default(cuid())
+  flightNumber String   @unique
+  flightData   Json
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
   @@map("flight_cache")
 }
 
 model FeedbackForm {
-  id          String   @id @default(cuid())
-  sessionId   String
-  rating      Int?
-  feedback    String?
-  email       String?
-  phone       String?
-  isResolved  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  
+  id         String   @id @default(cuid())
+  sessionId  String
+  rating     Int?
+  feedback   String?
+  email      String?
+  phone      String?
+  isResolved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
   @@map("feedback_forms")
 }
 
 model SupportAgent {
-  id          String   @id @default(cuid())
-  name        String
-  email       String   @unique
-  password    String   // Hashed password
-  role        String   @default("agent") // agent, supervisor, admin
-  skills      String[] // Areas of expertise
-  isActive    Boolean  @default(true)
-  isOnline    Boolean  @default(false)
-  maxChats    Int      @default(5) // Maximum concurrent chats
-  currentChats Int     @default(0) // Current active chats
-  lastLogin   DateTime?
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  password     String // Hashed password
+  role         String    @default("agent") // agent, supervisor, admin
+  skills       String[] // Areas of expertise
+  isActive     Boolean   @default(true)
+  isOnline     Boolean   @default(false)
+  maxChats     Int       @default(5) // Maximum concurrent chats
+  currentChats Int       @default(0) // Current active chats
+  lastLogin    DateTime?
   lastActivity DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
   // Relations
-  handoffs    ChatHandoff[]
-  agentChats  AgentChat[]
-  agentNotes  AgentNote[]
-  
+  handoffs   ChatHandoff[]
+  agentChats AgentChat[]
+  agentNotes AgentNote[]
+
   @@map("support_agents")
 }
 
 model ChatHandoff {
-  id          String   @id @default(cuid())
-  sessionId   String
-  agentId     String?
-  reason      String   // Why handoff was requested
-  priority    String   @default("normal") // low, normal, high, urgent
-  status      String   @default("pending") // pending, assigned, in_progress, completed, cancelled
-  context     Json?    // Chat context and history
-  waitTime    Int?     // Time waited before assignment (seconds)
-  resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String    @id @default(cuid())
+  sessionId  String
+  agentId    String?
+  reason     String // Why handoff was requested
+  priority   String    @default("normal") // low, normal, high, urgent
+  status     String    @default("pending") // pending, assigned, in_progress, completed, cancelled
+  context    Json? // Chat context and history
+  waitTime   Int? // Time waited before assignment (seconds)
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
   // Relations
-  session     ChatSession @relation(fields: [sessionId], references: [sessionId])
-  agent       SupportAgent? @relation(fields: [agentId], references: [id])
-  
+  session ChatSession   @relation(fields: [sessionId], references: [sessionId])
+  agent   SupportAgent? @relation(fields: [agentId], references: [id])
+
   @@map("chat_handoffs")
 }
 
 model AgentChat {
-  id          String   @id @default(cuid())
-  sessionId   String
-  agentId     String
-  status      String   @default("active") // active, on_hold, completed
-  startedAt   DateTime @default(now())
-  endedAt     DateTime?
-  duration    Int?     // Duration in seconds
-  satisfaction Int?    // 1-5 rating
-  notes       String?
-  
+  id           String    @id @default(cuid())
+  sessionId    String
+  agentId      String
+  status       String    @default("active") // active, on_hold, completed
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  duration     Int? // Duration in seconds
+  satisfaction Int? // 1-5 rating
+  notes        String?
+
   // Relations
-  session     ChatSession @relation(fields: [sessionId], references: [sessionId])
-  agent       SupportAgent @relation(fields: [agentId], references: [id])
-  
+  session ChatSession  @relation(fields: [sessionId], references: [sessionId])
+  agent   SupportAgent @relation(fields: [agentId], references: [id])
+
   @@map("agent_chats")
 }
 
 model AgentNote {
-  id          String   @id @default(cuid())
-  sessionId   String
-  agentId     String
-  note        String
-  isInternal  Boolean  @default(true) // Internal notes vs customer-visible
-  createdAt   DateTime @default(now())
-  
+  id         String   @id @default(cuid())
+  sessionId  String
+  agentId    String
+  note       String
+  isInternal Boolean  @default(true) // Internal notes vs customer-visible
+  createdAt  DateTime @default(now())
+
   // Relations
-  agent       SupportAgent @relation(fields: [agentId], references: [id])
-  
+  agent SupportAgent @relation(fields: [agentId], references: [id])
+
   @@map("agent_notes")
 }
 
 model QuickResponse {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  category    String?
-  isActive    Boolean  @default(true)
-  usageCount  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  category   String?
+  isActive   Boolean  @default(true)
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@map("quick_responses")
 }
 
 model ScrapingCache {
   id          String   @id @default(cuid())
   url         String   @unique
-  title       String?  // Page title
-  content     String   // Scraped text content
+  title       String? // Page title
+  content     String // Scraped text content
   headings    String[] // Extracted headings
-  links       Json?    // Extracted links as JSON
+  links       Json? // Extracted links as JSON
   lastScraped DateTime @default(now())
   createdAt   DateTime @default(now())
-  
+
   @@map("scraping_cache")
 }
 
@@ -203,22 +203,22 @@ model ChatAnalytics {
   failed      Int      @default(0)
   avgResponse Float?
   topQueries  Json?
-  
+
   @@unique([date])
   @@map("chat_analytics")
 }
 
 model ApiQuota {
-  id          String   @id @default(cuid())
-  provider    String   // gemini, huggingface, etc.
-  date        DateTime @db.Date
-  dailyLimit  Int      @default(1500) // Default limit for Gemini free tier
-  usedCount   Int      @default(0)
-  resetAt     DateTime // When the quota resets (usually midnight UTC)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String   @id @default(cuid())
+  provider   String // gemini, huggingface, etc.
+  date       DateTime @db.Date
+  dailyLimit Int      @default(1500) // Default limit for Gemini free tier
+  usedCount  Int      @default(0)
+  resetAt    DateTime // When the quota resets (usually midnight UTC)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@unique([provider, date])
   @@map("api_quota")
 }
@@ -233,6 +233,34 @@ model Category {
   order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@map("categories")
-} 
+}
+
+model AdminUser {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String // Hashed password
+  name        String?
+  role        String    @default("admin") // admin, super_admin, moderator
+  permissions String[] // Array of permission strings
+  isActive    Boolean   @default(true)
+  lastLogin   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("admin_users")
+}
+
+model BlockedIP {
+  id           String   @id @default(cuid())
+  ipAddress    String   @unique
+  reason       String? // Reason for blocking (e.g., "Bot activity", "Suspicious behavior")
+  blockedBy    String? // Admin email who blocked it
+  sessionCount Int      @default(0) // Number of sessions from this IP when blocked
+  isActive     Boolean  @default(true) // Can be unblocked
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("blocked_ips")
+}

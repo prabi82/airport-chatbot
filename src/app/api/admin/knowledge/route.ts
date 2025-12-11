@@ -10,11 +10,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const sourceUrl = searchParams.get('sourceUrl');
     const limit = parseInt(searchParams.get('limit') || '50');
     
     // Build where clause for filtering
     const where: any = { isActive: true };
     if (category) where.category = category;
+    if (sourceUrl) where.sourceUrl = sourceUrl;
     if (search) {
       where.OR = [
         { question: { contains: search, mode: 'insensitive' } },

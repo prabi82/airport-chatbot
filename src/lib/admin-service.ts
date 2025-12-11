@@ -4,8 +4,8 @@ import jwt from 'jsonwebtoken';
 
 export interface AdminUser {
   id: string;
-  username: string;
   email: string;
+  name?: string;
   role: 'admin' | 'super_admin' | 'moderator';
   permissions: string[];
   isActive: boolean;
@@ -61,48 +61,208 @@ export class AdminService {
   }
 
   // Admin Authentication
-  async authenticateAdmin(username: string, password: string): Promise<{ admin: AdminUser; token: string } | null> {
+  async authenticateAdmin(email: string, password: string): Promise<{ admin: AdminUser; token: string } | null> {
     try {
-      // For demo purposes, use hardcoded credentials
-      // In production, this would be stored in database with hashed passwords
-      const adminCredentials = {
-        username: 'admin',
-        password: 'admin123',
-        email: 'admin@omanairports.co.om',
-        role: 'super_admin' as const,
-        permissions: ['all']
-      };
+      // Find user in database by email
+      const user = await prisma.adminUser.findUnique({
+        where: { email }
+      });
 
-      if (username === adminCredentials.username && password === adminCredentials.password) {
-        const token = jwt.sign(
-          { 
-            adminId: 'admin-1', 
-            username: adminCredentials.username, 
-            role: adminCredentials.role 
-          },
-          process.env.JWT_SECRET || 'fallback-secret-key-for-demo',
-          { expiresIn: '8h' }
-        );
-
-        return {
-          admin: {
-            id: 'admin-1',
-            username: adminCredentials.username,
-            email: adminCredentials.email,
-            role: adminCredentials.role,
-            permissions: adminCredentials.permissions,
-            isActive: true,
-            lastLogin: new Date(),
-            createdAt: new Date()
-          },
-          token
-        };
+      if (!user) {
+        console.error('Admin auth: User not found for email:', email);
+        return null;
       }
 
-      return null;
+      if (!user.isActive) {
+        console.error('Admin auth: User is inactive:', email);
+        return null;
+      }
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        console.error('Admin auth: Invalid password for email:', email);
+        return null;
+      }
+
+      // Update last login
+      await prisma.adminUser.update({
+        where: { id: user.id },
+        data: { lastLogin: new Date() }
+      });
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { 
+          adminId: user.id, 
+          email: user.email, 
+          role: user.role 
+        },
+        process.env.JWT_SECRET || 'fallback-secret-key-for-demo',
+        { expiresIn: '8h' }
+      );
+
+      return {
+        admin: {
+          id: user.id,
+          email: user.email,
+          name: user.name || undefined,
+          role: user.role as 'admin' | 'super_admin' | 'moderator',
+          permissions: user.permissions,
+          isActive: user.isActive,
+          lastLogin: user.lastLogin || undefined,
+          createdAt: user.createdAt
+        },
+        token
+      };
     } catch (error) {
       console.error('Admin authentication error:', error);
       return null;
+    }
+  }
+
+  // Verify JWT token
+  async verifyToken(token: string): Promise<AdminUser | null> {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-key-for-demo') as any;
+      
+      const user = await prisma.adminUser.findUnique({
+        where: { id: decoded.adminId }
+      });
+
+      if (!user || !user.isActive) {
+        return null;
+      }
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name || undefined,
+        role: user.role as 'admin' | 'super_admin' | 'moderator',
+        permissions: user.permissions,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin || undefined,
+        createdAt: user.createdAt
+      };
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return null;
+    }
+  }
+
+  // User Management Methods
+  async getAllUsers(): Promise<AdminUser[]> {
+    try {
+      const users = await prisma.adminUser.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+
+      return users.map(user => ({
+        id: user.id,
+        email: user.email,
+        name: user.name || undefined,
+        role: user.role as 'admin' | 'super_admin' | 'moderator',
+        permissions: user.permissions,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin || undefined,
+        createdAt: user.createdAt
+      }));
+    } catch (error) {
+      console.error('Get all users error:', error);
+      return [];
+    }
+  }
+
+  async createUser(data: {
+    email: string;
+    password: string;
+    name?: string;
+    role?: string;
+    permissions?: string[];
+  }): Promise<AdminUser | null> {
+    try {
+      // Hash password
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+
+      const user = await prisma.adminUser.create({
+        data: {
+          email: data.email,
+          password: hashedPassword,
+          name: data.name,
+          role: data.role || 'admin',
+          permissions: data.permissions || []
+        }
+      });
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name || undefined,
+        role: user.role as 'admin' | 'super_admin' | 'moderator',
+        permissions: user.permissions,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin || undefined,
+        createdAt: user.createdAt
+      };
+    } catch (error) {
+      console.error('Create user error:', error);
+      return null;
+    }
+  }
+
+  async updateUser(id: string, data: {
+    email?: string;
+    password?: string;
+    name?: string;
+    role?: string;
+    permissions?: string[];
+    isActive?: boolean;
+  }): Promise<AdminUser | null> {
+    try {
+      const updateData: any = { ...data };
+      
+      // Hash password if provided
+      if (data.password) {
+        updateData.password = await bcrypt.hash(data.password, 10);
+      }
+
+      // Remove undefined fields
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+
+      const user = await prisma.adminUser.update({
+        where: { id },
+        data: updateData
+      });
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name || undefined,
+        role: user.role as 'admin' | 'super_admin' | 'moderator',
+        permissions: user.permissions,
+        isActive: user.isActive,
+        lastLogin: user.lastLogin || undefined,
+        createdAt: user.createdAt
+      };
+    } catch (error) {
+      console.error('Update user error:', error);
+      return null;
+    }
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    try {
+      await prisma.adminUser.delete({
+        where: { id }
+      });
+      return true;
+    } catch (error) {
+      console.error('Delete user error:', error);
+      return false;
     }
   }
 
