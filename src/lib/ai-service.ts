@@ -1971,38 +1971,44 @@ export class AIService {
                               messageLower === 'more' ||
                               messageLower.includes('details');
 
-    // Travel band query handler - MUST run before dining detection
-    const isTravelBandQuery = messageLower.includes('travel band') || messageLower.includes('travelband') ||
-                             (messageLower.includes('travel') && messageLower.includes('band')) ||
-                             messageLower.includes('luggage band') || messageLower.includes('luggage strap') ||
-                             messageLower.includes('bag strap') || messageLower.includes('suitcase band');
+    // Travel ban query handler - MUST run before dining detection
+    const isTravelBanQuery = messageLower.includes('travel ban') || messageLower.includes('travelban') ||
+                             (messageLower.includes('travel') && messageLower.includes('ban')) ||
+                             messageLower.includes('travel restriction') || messageLower.includes('travel restrictions') ||
+                             messageLower.includes('entry ban') || messageLower.includes('entry restriction') ||
+                             messageLower.includes('visa restriction') || messageLower.includes('immigration ban');
     
-    if (isTravelBandQuery) {
+    if (isTravelBanQuery) {
       const processingTime = Date.now() - startTime;
       
-      let travelBandResponse = `🎒 **Travel Bands & Luggage Straps Information**\n\n`;
-      travelBandResponse += `**What are Travel Bands?**\n`;
-      travelBandResponse += `Travel bands (also called luggage straps or baggage bands) are straps used to secure and identify your luggage during travel.\n\n`;
-      travelBandResponse += `**📍 Where to Find Travel Bands at Muscat International Airport:**\n\n`;
-      travelBandResponse += `• **Shopping Areas:** Check the shopping areas in the departures and arrivals halls\n`;
-      travelBandResponse += `• **Travel Accessories Shops:** Various shops in the terminal sell travel accessories including luggage straps\n`;
-      travelBandResponse += `• **Duty-Free Shops:** Some duty-free shops may carry travel bands and luggage accessories\n\n`;
-      travelBandResponse += `**💡 Uses of Travel Bands:**\n`;
-      travelBandResponse += `• Secure luggage zippers and prevent accidental opening\n`;
-      travelBandResponse += `• Identify your luggage easily with colored or personalized bands\n`;
-      travelBandResponse += `• Add extra security to your checked baggage\n`;
-      travelBandResponse += `• Help distinguish your luggage from similar bags\n\n`;
-      travelBandResponse += `**📞 For More Information:**\n`;
-      travelBandResponse += `• Visit the airport information desk for assistance locating travel accessories\n`;
-      travelBandResponse += `• Contact Airport Support: +968 24351234\n\n`;
-      travelBandResponse += `**💼 Alternative Options:**\n`;
-      travelBandResponse += `• You can also purchase travel bands online or at travel stores before your trip\n`;
-      travelBandResponse += `• Consider using luggage tags and identification labels for better luggage tracking`;
+      let travelBanResponse = `🚫 **Travel Ban & Entry Restrictions Information**\n\n`;
+      travelBanResponse += `**📋 About Travel Bans:**\n`;
+      travelBanResponse += `Travel bans are restrictions imposed on entry to a country, often related to immigration policies, visa requirements, or security measures.\n\n`;
+      travelBanResponse += `**📍 For Travel Ban Information at Muscat International Airport:**\n\n`;
+      travelBanResponse += `**🔍 Where to Get Information:**\n`;
+      travelBanResponse += `• **Immigration Desk:** Visit the immigration and passport control desk at the airport for entry requirements\n`;
+      travelBanResponse += `• **Airport Information Desk:** Located in the arrivals and departures halls - staff can provide guidance on travel restrictions\n`;
+      travelBanResponse += `• **Your Airline:** Contact your airline directly for the most current travel ban and entry restriction information\n\n`;
+      travelBanResponse += `**📞 Contact Information:**\n`;
+      travelBanResponse += `• **Airport Support:** +968 24351234\n`;
+      travelBanResponse += `• **Immigration Services:** Contact Royal Oman Police (ROP) for visa and entry requirements\n`;
+      travelBanResponse += `• **Your Embassy/Consulate:** For specific country entry requirements, contact your country's embassy in Oman\n\n`;
+      travelBanResponse += `**💡 Important Notes:**\n`;
+      travelBanResponse += `• Travel bans and entry restrictions can change frequently\n`;
+      travelBanResponse += `• Always check with official sources (government websites, embassies) for the most current information\n`;
+      travelBanResponse += `• Visa requirements vary by nationality and destination\n`;
+      travelBanResponse += `• Some countries may have specific entry restrictions or health requirements\n\n`;
+      travelBanResponse += `**🌐 Official Sources:**\n`;
+      travelBanResponse += `• **Oman Government:** Check official government websites for entry requirements to Oman\n`;
+      travelBanResponse += `• **Destination Country:** Check the official government website of your destination country for entry restrictions\n`;
+      travelBanResponse += `• **Airline Websites:** Most airlines provide travel restriction information on their websites\n\n`;
+      travelBanResponse += `**⚠️ For Real-Time Information:**\n`;
+      travelBanResponse += `I recommend contacting your airline, embassy, or the immigration desk at the airport for the most up-to-date travel ban and entry restriction information, as these policies can change frequently.`;
       
       return {
-        message: travelBandResponse,
+        message: travelBanResponse,
         success: true,
-        provider: 'travel-band-handler',
+        provider: 'travel-ban-handler',
         processingTime,
         knowledgeBaseUsed: false,
         sources: ['https://www.muscatairport.co.om'],
