@@ -873,13 +873,16 @@ export class AIService {
     const hasFlightKeywords = lowerMessage.includes('flight') || lowerMessage.includes('departure') || lowerMessage.includes('arrival') || lowerMessage.includes('flight status') || lowerMessage.includes('flight number') || lowerMessage.includes('departed') || lowerMessage.includes('departure time') || lowerMessage.includes('arrival time');
     const hasFlightNumber = /wy\s*\d+|om\s*\d+|ai\s*\d+|ek\s*\d+|qr\s*\d+|ey\s*\d+|fz\s*\d+|6e\s*\d+|sg\s*\d+|flight\s*\d+/i.test(message);
     
-    const isFlightQueryForced = hasFlightKeywords || 
+    // Exclude parking and other non-flight queries from flight detection
+    const isParkingContext = lowerMessage.includes('park') || lowerMessage.includes('car') || lowerMessage.includes('vehicle');
+    const isFlightQueryForced = !isParkingContext && (
+                                hasFlightKeywords || 
                                 hasFlightNumber ||
                                 (hasTimeQuery && (hasAirline || hasCity || lowerMessage.includes('flight') || lowerMessage.includes('depart'))) ||
                                 (hasAirline && hasCity) ||
                                 (hasAirline && hasTimeQuery) ||
                                 (lowerMessage.includes('when does') && (lowerMessage.includes('leave') || lowerMessage.includes('depart'))) ||
-                                (lowerMessage.includes('expecting') && (hasAirline || hasCity));
+                                (lowerMessage.includes('expecting') && (hasAirline || hasCity)));
 
     // Flight information handler - MUST run early to intercept flight queries before greeting handler
     // Provide helpful response even without real-time flight system connection
@@ -934,6 +937,12 @@ export class AIService {
 
     // Ticket/Booking query handler - MUST run BEFORE greeting and medical handlers
     // Detects ticket booking queries to prevent confusion with medical emergencies
+    // EXCLUDE parking, lounge, hotel, and other service reservations
+    const parkingKeywords = ['park', 'parking', 'car park', 'vehicle', 'car'];
+    const serviceKeywords = ['lounge', 'hotel', 'spa', 'restaurant', 'dining', 'table'];
+    const isParkingQuery = parkingKeywords.some(keyword => lowerMessage.includes(keyword));
+    const isServiceReservation = serviceKeywords.some(keyword => lowerMessage.includes(keyword) && lowerMessage.includes('reservation'));
+    
     const ticketKeywords = ['ticket', 'book', 'booking', 'buy ticket', 'purchase ticket', 'reserve', 'reservation'];
     const travelKeywords = ['pakistan', 'india', 'dubai', 'travel', 'traveling', 'travelling', 'trip', 'journey'];
     const emergencyTicketPattern = /emergency\s+ticket|urgent\s+ticket|need\s+ticket|want\s+ticket/i;
@@ -942,11 +951,13 @@ export class AIService {
     const hasEmergencyTicket = emergencyTicketPattern.test(message);
     const hasFromToPattern = /from\s+\w+\s+to\s+\w+|to\s+\w+\s+from\s+\w+/i.test(message);
     
-    const isTicketBookingQuery = hasEmergencyTicket || 
+    // Exclude parking and service reservations from ticket booking detection
+    const isTicketBookingQuery = !isParkingQuery && !isServiceReservation && (
+                                 hasEmergencyTicket || 
                                  (hasTicketKeyword && (hasTravelKeyword || hasFromToPattern)) ||
                                  (hasTicketKeyword && (lowerMessage.includes('guide') || lowerMessage.includes('help') || lowerMessage.includes('how'))) ||
-                                 (lowerMessage.includes('need') && hasTicketKeyword) ||
-                                 (lowerMessage.includes('want') && hasTicketKeyword);
+                                 (lowerMessage.includes('need') && hasTicketKeyword && !isParkingQuery) ||
+                                 (lowerMessage.includes('want') && hasTicketKeyword && !isParkingQuery));
 
     if (isTicketBookingQuery) {
       const processingTime = Date.now() - startTime;
@@ -1082,7 +1093,10 @@ export class AIService {
                                  message.toLowerCase().includes('daily') || message.toLowerCase().includes('weekly') ||
                                  (message.toLowerCase().includes('cost') && message.toLowerCase().includes('park')) ||
                                  (message.toLowerCase().includes('much') && message.toLowerCase().includes('park')) ||
-                                 (message.toLowerCase().includes('rates') && message.toLowerCase().includes('airport'));
+                                 (message.toLowerCase().includes('rates') && message.toLowerCase().includes('airport')) ||
+                                 (message.toLowerCase().includes('reservation') && (message.toLowerCase().includes('park') || message.toLowerCase().includes('car'))) ||
+                                 (message.toLowerCase().includes('reserve') && (message.toLowerCase().includes('park') || message.toLowerCase().includes('car'))) ||
+                                 (message.toLowerCase().includes('need') && message.toLowerCase().includes('reservation') && (message.toLowerCase().includes('park') || message.toLowerCase().includes('car')));
     
     // Detect lounge queries (including pricing queries)
     const messageLower = message.toLowerCase();
@@ -1393,6 +1407,38 @@ export class AIService {
       
       // Check for duration-specific queries and calculate costs
       const messageLower = message.toLowerCase();
+      
+      // Detect parking reservation queries
+      const isReservationQuery = messageLower.includes('reservation') || messageLower.includes('reserve') || 
+                                messageLower.includes('need') && messageLower.includes('reservation') ||
+                                messageLower.includes('make') && messageLower.includes('reservation');
+      
+      // Handle reservation queries first
+      if (isReservationQuery) {
+        const reservationResponse = `🅿️ **Parking Reservation Information**\n\n`;
+        const response = reservationResponse + 
+          `**No reservation required!** Parking at Muscat International Airport is available on a first-come, first-served basis. You do not need to make a reservation in advance.\n\n` +
+          `**📅 For your 2-day parking (27-29 April):**\n` +
+          `• Simply drive to the airport and park in any available parking area\n` +
+          `• Payment is made at automated ticket machines in each parking area\n` +
+          `• Car parking attendants are available on-site 24/7 for assistance\n\n` +
+          `**💰 Recommended Parking Options for 2 Days:**\n` +
+          `• **P5 or P6 Long Term Parking:** OMR 3.000 for first 3 days (best value)\n` +
+          `• **P3 Long Term Parking:** OMR 9.500 for 3 days\n` +
+          `• **P1 Short Term:** OMR 25.200 for first 24 hours + OMR 21.000 per additional day\n\n` +
+          `**💡 Tip:** P5 and P6 offer the best rates for multi-day parking. Look for signs directing you to these areas.\n\n` +
+          `**📍 Payment:** Omani Riyals only at automated ticket machines in each car park. All rates include VAT.`;
+        
+        return {
+          message: response,
+          success: true,
+          provider: 'parking-knowledge-base',
+          processingTime,
+          knowledgeBaseUsed: true,
+          sources: [...new Set(sources)],
+          kbEntryId: parkingEntries.length > 0 ? parkingEntries[0].id : undefined
+        };
+      }
       
       // Detect long-term parking queries (without specific days)
       const isLongTermQuery = messageLower.includes('long term') || messageLower.includes('long-term') || 
