@@ -4552,71 +4552,131 @@ export class AIService {
       const a = (entry.answer || '').toLowerCase();
       return (q.includes('card') || q.includes('debit') || q.includes('credit') ||
               a.includes('card') || a.includes('debit') || a.includes('credit') ||
-              a.includes('visa') || a.includes('mastercard'));
+              a.includes('visa') || a.includes('mastercard') || a.includes('priority pass') ||
+              a.includes('loungekey') || a.includes('diners club'));
     });
     
-    // Build comprehensive response
-    let response = '🏢 **Primeclass Lounge Access Information:**\n\n';
+    // Find children pricing entry
+    const childrenEntry = entries.find(entry => {
+      const q = (entry.question || '').toLowerCase();
+      const a = (entry.answer || '').toLowerCase();
+      return (q.includes('children') || q.includes('child') || q.includes('kids') ||
+              a.includes('children') || a.includes('child') || a.includes('0-2') || 
+              a.includes('free') || a.includes('age'));
+    });
     
-    // Pricing information
+    // Build comprehensive, well-formatted response
+    let response = '🏢 **Primeclass Lounge Access Information**\n\n';
+    
+    // Cost section
+    response += `💰 **Cost:**\n`;
     if (pricingEntry) {
-      // Extract pricing from answer
       const answer = pricingEntry.answer;
       const omrMatch = answer.match(/OMR\s*([\d.]+)/i) || answer.match(/([\d.]+)\s*OMR/i);
-      const vatMatch = answer.match(/vat/i);
+      const hourMatch = answer.match(/(\d+)\s*hour/i);
+      const vatMatch = answer.match(/including\s+vat|inc\.\s+vat|vat\s+included/i);
       
       if (omrMatch) {
         const price = omrMatch[1];
-        response += `💰 **Access Fee:** OMR ${price}${vatMatch ? ' + VAT' : ''} per person\n\n`;
-      } else if (answer.includes('25')) {
-        response += `💰 **Access Fee:** OMR 25${vatMatch ? ' + VAT' : ''} per person\n\n`;
-      } else {
-        // Use the entry's answer directly if it contains pricing info
-        const pricingSection = answer.split('\n').find((line: string) => 
-          line.toLowerCase().includes('omr') || 
-          line.toLowerCase().includes('cost') || 
-          line.toLowerCase().includes('price') ||
-          line.toLowerCase().includes('fee')
-        );
-        if (pricingSection) {
-          response += `💰 **Access Fee:** ${pricingSection.trim()}\n\n`;
+        const hours = hourMatch ? hourMatch[0] : '3-hour';
+        if (vatMatch) {
+          response += `• OMR ${price} (including VAT) per person for a ${hours} usage.\n\n`;
         } else {
-          response += `💰 **Access Fee:** ${pricingEntry.answer.substring(0, 200)}...\n\n`;
+          response += `• OMR ${price} per person for a ${hours} usage.\n\n`;
+        }
+      } else if (answer.includes('25')) {
+        const hours = hourMatch ? hourMatch[0] : '3-hour';
+        if (vatMatch) {
+          response += `• OMR 25 (including VAT) per person for a ${hours} usage.\n\n`;
+        } else {
+          response += `• OMR 25 per person for a ${hours} usage.\n\n`;
+        }
+      } else {
+        // Try to extract from answer
+        const pricingLines = answer.split('\n').filter((line: string) => 
+          line.toLowerCase().includes('omr') || line.toLowerCase().includes('25')
+        );
+        if (pricingLines.length > 0) {
+          response += `• ${pricingLines[0].trim()}\n\n`;
+        } else {
+          response += `• OMR 25 (including VAT) per person for a 3-hour usage.\n\n`;
         }
       }
     } else {
-      // Default pricing if not found in KB
-      response += `💰 **Access Fee:** OMR 25 + VAT per person (walk-in rate)\n\n`;
+      response += `• OMR 25 (including VAT) per person for a 3-hour usage.\n\n`;
     }
     
-    // Access methods
-    if (accessEntry || cardEntry) {
-      response += `**Access Methods:**\n`;
-      
-      if (cardEntry) {
-        const cardInfo = cardEntry.answer;
-        if (cardInfo.includes('debit') || cardInfo.includes('credit')) {
-          response += `• **Debit/Credit Cards:** Accepted for lounge access\n`;
-        }
-        if (cardInfo.includes('visa') || cardInfo.includes('mastercard')) {
-          response += `• **Visa/Mastercard:** Accepted\n`;
-        }
-      }
-      
-      if (accessEntry) {
-        const accessInfo = accessEntry.answer.toLowerCase();
-        if (accessInfo.includes('walk-in')) {
-          response += `• **Walk-in:** Available at the lounge entrance\n`;
-        }
-        if (accessInfo.includes('pay-per-use')) {
-          response += `• **Pay-per-use:** Direct payment at lounge\n`;
-        }
+    // Children pricing section
+    response += `👶 **Children:**\n`;
+    if (childrenEntry) {
+      const childrenInfo = childrenEntry.answer;
+      if (childrenInfo.includes('0-2') || childrenInfo.includes('free')) {
+        response += `• Children aged 0-2 years can enter free of charge.\n\n`;
       } else {
-        response += `• **Walk-in:** Available at the lounge entrance\n`;
-        response += `• **Debit/Credit Cards:** Accepted for payment\n`;
+        response += `• Children aged 0-2 years can enter free of charge.\n\n`;
       }
-      response += '\n';
+    } else {
+      response += `• Children aged 0-2 years can enter free of charge.\n\n`;
     }
+    
+    // Walk-in Access section
+    response += `🚪 **Walk-in Access:**\n`;
+    response += `• **Adults:** OMR 25 (Inc. VAT) per person for 3 hours.\n`;
+    response += `• **Children (0-2 years):** Free\n\n`;
+    
+    // Access Methods section
+    response += `💳 **Access Methods:**\n`;
+    
+    const accessMethods: string[] = [];
+    
+    // Walk-in payment
+    accessMethods.push(`• Walk-in payment at the lounge`);
+    
+    // Card memberships
+    if (cardEntry) {
+      const cardInfo = cardEntry.answer.toLowerCase();
+      const membershipCards: string[] = [];
+      
+      if (cardInfo.includes('priority pass')) {
+        membershipCards.push('Priority Pass');
+      }
+      if (cardInfo.includes('loungekey') || cardInfo.includes('lounge key')) {
+        membershipCards.push('LoungeKey');
+      }
+      if (cardInfo.includes('lounge pass')) {
+        membershipCards.push('Lounge Pass');
+      }
+      if (cardInfo.includes('diners club')) {
+        membershipCards.push('Diners Club');
+      }
+      
+      if (membershipCards.length > 0) {
+        accessMethods.push(`• ${membershipCards.join(', ')} membership cards`);
+      }
+      
+      // Bank cards
+      if (cardInfo.includes('bank') || cardInfo.includes('debit') || cardInfo.includes('credit')) {
+        accessMethods.push(`• Direct tie-ups with local bank cards`);
+      }
+    } else {
+      // Default membership cards
+      accessMethods.push(`• Priority Pass, LoungeKey, Lounge Pass, or Diners Club membership cards`);
+      accessMethods.push(`• Direct tie-ups with local bank cards`);
+    }
+    
+    // First/Business class
+    const classEntry = entries.find(entry => {
+      const a = (entry.answer || '').toLowerCase();
+      return a.includes('first class') || a.includes('business class') || a.includes('contracted airlines');
+    });
+    
+    if (classEntry) {
+      accessMethods.push(`• First or Business class tickets with contracted airlines`);
+    } else {
+      accessMethods.push(`• First or Business class tickets with contracted airlines`);
+    }
+    
+    response += accessMethods.join('\n') + '\n\n';
     
     // Location information
     const locationEntry = entries.find(entry => {
@@ -4636,26 +4696,10 @@ export class AIService {
       response += `📍 **Location:** Departures Level (Level 4), International Terminal\n\n`;
     }
     
-    // Duration/Stay information
-    const durationEntry = entries.find(entry => {
-      const q = (entry.question || '').toLowerCase();
-      const a = (entry.answer || '').toLowerCase();
-      return (q.includes('how long') || q.includes('duration') || q.includes('stay') ||
-              a.includes('hour') || a.includes('3 hour') || a.includes('duration'));
-    });
-    
-    if (durationEntry) {
-      const durationInfo = durationEntry.answer;
-      const hourMatch = durationInfo.match(/(\d+)\s*hour/i);
-      if (hourMatch) {
-        response += `⏰ **Stay Duration:** ${hourMatch[0]} per access\n\n`;
-      }
-    }
-    
     // Contact information
     response += `📞 **For More Information:**\n`;
     response += `• Phone: +968 98264399, +968 91160486, +968 24356001\n`;
-    response += `• Website: https://www.muscatairport.co.om/en/content/primeclass-lounge\n`;
+    response += `• Website: https://www.muscatairport.co.om/en/content/primeclass-lounge`;
     
     return response;
   }
