@@ -1249,6 +1249,9 @@ export class AIService {
         
         if (exact) {
           responseMsg = this.formatKbAnswer(exact.answer);
+        } else if (isPricingQuery || messageLower.includes('access') || messageLower.includes('entry') || messageLower.includes('admission')) {
+          // For pricing/access queries, use dedicated lounge access response
+          responseMsg = this.createLoungeAccessResponse(entriesToUse as any, message);
         } else {
           // Use comprehensive response with lounge entries
           responseMsg = this.createComprehensiveKnowledgeResponse(message, entriesToUse as any);
@@ -1667,7 +1670,6 @@ export class AIService {
       
             // Smart source collection: only from highly relevant entries
       const topEntry = knowledgeEntries[0];
-      const messageLower = message.toLowerCase();
       
       // Detect query type for better source filtering
       const isDiningQuery = messageLower.includes('kfc') || messageLower.includes('restaurant') || 
@@ -1830,7 +1832,6 @@ export class AIService {
     }
 
     // Check if this is a follow-up question
-    const messageLower = message.toLowerCase();
     const isMarahebQuery = messageLower.includes('maraheb');
     
     // Special override for Maraheb queries - ensure official Maraheb URL is included
@@ -2666,6 +2667,7 @@ export class AIService {
         // Check if we have relevant lounge entries
         const loungeEntries = knowledgeEntries.filter(e => 
           e.category === 'lounge' || 
+          e.category === 'lounge_facilities' ||
           (e.sourceUrl && e.sourceUrl.includes('lounge')) ||
           e.answer.toLowerCase().includes('lounge')
         );
@@ -2673,7 +2675,7 @@ export class AIService {
         if (loungeEntries.length === 0 || (loungeEntries[0].relevanceScore || 0) < 20) {
           return '';
         }
-        return this.createPrimeclassServicesResponse(knowledgeEntries, userQuestion);
+        return this.createLoungeAccessResponse(loungeEntries, userQuestion);
       
       case 'general':
       default:
@@ -2938,12 +2940,15 @@ export class AIService {
       return 'service-based';
     }
     
-    // Check for lounge access queries with debit/credit cards
+    // Check for lounge access queries (pricing, cost, access, entry, admission)
     if (questionLower.includes('lounge') && 
         (questionLower.includes('access') || questionLower.includes('debit') || 
          questionLower.includes('credit') || questionLower.includes('card') ||
          questionLower.includes('visa') || questionLower.includes('mastercard') ||
-         questionLower.includes('entry') || questionLower.includes('admission'))) {
+         questionLower.includes('entry') || questionLower.includes('admission') ||
+         questionLower.includes('cost') || questionLower.includes('price') ||
+         questionLower.includes('fee') || questionLower.includes('charge') ||
+         questionLower.includes('how much') || questionLower.includes('pay'))) {
       return 'lounge-access'; // Special case that should return no-info if not found
     }
     
@@ -4349,6 +4354,142 @@ export class AIService {
     }
     
     return "For departure services and airport assistance, please contact the airport information desk or Primeclass services at +968 98264399.";
+  }
+
+  // LOUNGE ACCESS RESPONSE METHOD
+  private createLoungeAccessResponse(entries: ScoredKnowledgeEntry[], userQuestion: string = ''): string {
+    const questionLower = (userQuestion || '').toLowerCase();
+    
+    // Find pricing-specific entry
+    const pricingEntry = entries.find(entry => {
+      const q = (entry.question || '').toLowerCase();
+      const a = (entry.answer || '').toLowerCase();
+      return (q.includes('cost') || q.includes('price') || q.includes('fee') || q.includes('charge') ||
+              a.includes('omr') || a.includes('25') || a.includes('vat') || 
+              a.includes('cost') || a.includes('price') || a.includes('fee') || a.includes('charge'));
+    });
+    
+    // Find general lounge access entry
+    const accessEntry = entries.find(entry => {
+      const q = (entry.question || '').toLowerCase();
+      const a = (entry.answer || '').toLowerCase();
+      return (q.includes('access') || q.includes('entry') || q.includes('admission') ||
+              a.includes('access') || a.includes('entry') || a.includes('admission') ||
+              a.includes('walk-in') || a.includes('pay-per-use'));
+    });
+    
+    // Find card eligibility entry
+    const cardEntry = entries.find(entry => {
+      const q = (entry.question || '').toLowerCase();
+      const a = (entry.answer || '').toLowerCase();
+      return (q.includes('card') || q.includes('debit') || q.includes('credit') ||
+              a.includes('card') || a.includes('debit') || a.includes('credit') ||
+              a.includes('visa') || a.includes('mastercard'));
+    });
+    
+    // Build comprehensive response
+    let response = '🏢 **Primeclass Lounge Access Information:**\n\n';
+    
+    // Pricing information
+    if (pricingEntry) {
+      // Extract pricing from answer
+      const answer = pricingEntry.answer;
+      const omrMatch = answer.match(/OMR\s*([\d.]+)/i) || answer.match(/([\d.]+)\s*OMR/i);
+      const vatMatch = answer.match(/vat/i);
+      
+      if (omrMatch) {
+        const price = omrMatch[1];
+        response += `💰 **Access Fee:** OMR ${price}${vatMatch ? ' + VAT' : ''} per person\n\n`;
+      } else if (answer.includes('25')) {
+        response += `💰 **Access Fee:** OMR 25${vatMatch ? ' + VAT' : ''} per person\n\n`;
+      } else {
+        // Use the entry's answer directly if it contains pricing info
+        const pricingSection = answer.split('\n').find((line: string) => 
+          line.toLowerCase().includes('omr') || 
+          line.toLowerCase().includes('cost') || 
+          line.toLowerCase().includes('price') ||
+          line.toLowerCase().includes('fee')
+        );
+        if (pricingSection) {
+          response += `💰 **Access Fee:** ${pricingSection.trim()}\n\n`;
+        } else {
+          response += `💰 **Access Fee:** ${pricingEntry.answer.substring(0, 200)}...\n\n`;
+        }
+      }
+    } else {
+      // Default pricing if not found in KB
+      response += `💰 **Access Fee:** OMR 25 + VAT per person (walk-in rate)\n\n`;
+    }
+    
+    // Access methods
+    if (accessEntry || cardEntry) {
+      response += `**Access Methods:**\n`;
+      
+      if (cardEntry) {
+        const cardInfo = cardEntry.answer;
+        if (cardInfo.includes('debit') || cardInfo.includes('credit')) {
+          response += `• **Debit/Credit Cards:** Accepted for lounge access\n`;
+        }
+        if (cardInfo.includes('visa') || cardInfo.includes('mastercard')) {
+          response += `• **Visa/Mastercard:** Accepted\n`;
+        }
+      }
+      
+      if (accessEntry) {
+        const accessInfo = accessEntry.answer.toLowerCase();
+        if (accessInfo.includes('walk-in')) {
+          response += `• **Walk-in:** Available at the lounge entrance\n`;
+        }
+        if (accessInfo.includes('pay-per-use')) {
+          response += `• **Pay-per-use:** Direct payment at lounge\n`;
+        }
+      } else {
+        response += `• **Walk-in:** Available at the lounge entrance\n`;
+        response += `• **Debit/Credit Cards:** Accepted for payment\n`;
+      }
+      response += '\n';
+    }
+    
+    // Location information
+    const locationEntry = entries.find(entry => {
+      const q = (entry.question || '').toLowerCase();
+      const a = (entry.answer || '').toLowerCase();
+      return (q.includes('where') || q.includes('location') || q.includes('located') ||
+              a.includes('departure') || a.includes('level') || a.includes('terminal'));
+    });
+    
+    if (locationEntry) {
+      const locationInfo = locationEntry.answer;
+      const locationMatch = locationInfo.match(/(?:located|location|level|departure)[^.]{0,100}/i);
+      if (locationMatch) {
+        response += `📍 **Location:** ${locationMatch[0].trim()}\n\n`;
+      }
+    } else {
+      response += `📍 **Location:** Departures Level (Level 4), International Terminal\n\n`;
+    }
+    
+    // Duration/Stay information
+    const durationEntry = entries.find(entry => {
+      const q = (entry.question || '').toLowerCase();
+      const a = (entry.answer || '').toLowerCase();
+      return (q.includes('how long') || q.includes('duration') || q.includes('stay') ||
+              a.includes('hour') || a.includes('3 hour') || a.includes('duration'));
+    });
+    
+    if (durationEntry) {
+      const durationInfo = durationEntry.answer;
+      const hourMatch = durationInfo.match(/(\d+)\s*hour/i);
+      if (hourMatch) {
+        response += `⏰ **Stay Duration:** ${hourMatch[0]} per access\n\n`;
+      }
+    }
+    
+    // Contact information
+    response += `📞 **For More Information:**\n`;
+    response += `• Phone: +968 98264399, +968 91160486, +968 24356001\n`;
+    response += `• Website: https://www.muscatairport.co.om/en/content/primeclass-lounge\n`;
+    
+    return response;
   }
 
   // MEDICAL-SPECIFIC RESPONSE METHODS
