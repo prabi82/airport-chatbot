@@ -1971,6 +1971,45 @@ export class AIService {
                               messageLower === 'more' ||
                               messageLower.includes('details');
 
+    // Travel band query handler - MUST run before dining detection
+    const isTravelBandQuery = messageLower.includes('travel band') || messageLower.includes('travelband') ||
+                             (messageLower.includes('travel') && messageLower.includes('band')) ||
+                             messageLower.includes('luggage band') || messageLower.includes('luggage strap') ||
+                             messageLower.includes('bag strap') || messageLower.includes('suitcase band');
+    
+    if (isTravelBandQuery) {
+      const processingTime = Date.now() - startTime;
+      
+      let travelBandResponse = `🎒 **Travel Bands & Luggage Straps Information**\n\n`;
+      travelBandResponse += `**What are Travel Bands?**\n`;
+      travelBandResponse += `Travel bands (also called luggage straps or baggage bands) are straps used to secure and identify your luggage during travel.\n\n`;
+      travelBandResponse += `**📍 Where to Find Travel Bands at Muscat International Airport:**\n\n`;
+      travelBandResponse += `• **Shopping Areas:** Check the shopping areas in the departures and arrivals halls\n`;
+      travelBandResponse += `• **Travel Accessories Shops:** Various shops in the terminal sell travel accessories including luggage straps\n`;
+      travelBandResponse += `• **Duty-Free Shops:** Some duty-free shops may carry travel bands and luggage accessories\n\n`;
+      travelBandResponse += `**💡 Uses of Travel Bands:**\n`;
+      travelBandResponse += `• Secure luggage zippers and prevent accidental opening\n`;
+      travelBandResponse += `• Identify your luggage easily with colored or personalized bands\n`;
+      travelBandResponse += `• Add extra security to your checked baggage\n`;
+      travelBandResponse += `• Help distinguish your luggage from similar bags\n\n`;
+      travelBandResponse += `**📞 For More Information:**\n`;
+      travelBandResponse += `• Visit the airport information desk for assistance locating travel accessories\n`;
+      travelBandResponse += `• Contact Airport Support: +968 24351234\n\n`;
+      travelBandResponse += `**💼 Alternative Options:**\n`;
+      travelBandResponse += `• You can also purchase travel bands online or at travel stores before your trip\n`;
+      travelBandResponse += `• Consider using luggage tags and identification labels for better luggage tracking`;
+      
+      return {
+        message: travelBandResponse,
+        success: true,
+        provider: 'travel-band-handler',
+        processingTime,
+        knowledgeBaseUsed: false,
+        sources: ['https://www.muscatairport.co.om'],
+        kbEntryId: undefined
+      };
+    }
+
     // For listing questions (coffee, dining, etc) and baggage questions, use enhanced knowledge base for better formatting
     const isListingQuestion = messageLower.includes('coffee') || messageLower.includes('dining') || 
                               messageLower.includes('restaurant') || messageLower.includes('food') ||
