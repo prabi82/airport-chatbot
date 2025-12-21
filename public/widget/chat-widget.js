@@ -315,23 +315,31 @@ class OmanAirportsChatWidget {
     // Step 2: Split into lines for processing
     const lines = result.split('\n');
     const processedLines = [];
+    let lastWasHeader = false;
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
       
-      // Empty line = spacing
+      // Empty line = spacing (but only if previous line wasn't empty)
       if (!trimmed) {
-        processedLines.push('<div style="margin: 8px 0;"></div>');
+        if (processedLines.length > 0 && !processedLines[processedLines.length - 1].includes('margin: 12px 0')) {
+          processedLines.push('<div style="margin: 12px 0; display: block;"></div>');
+        }
+        lastWasHeader = false;
         continue;
       }
       
       // Check if line is a section header (entire line is bold text like **📍 Location:**)
       const boldMatch = trimmed.match(/^\*\*([^*]+)\*\*$/);
       if (boldMatch) {
-        // This is a section header
+        // This is a section header - add extra spacing before it
         const headerText = boldMatch[1];
-        processedLines.push(`<div style="margin-top: 16px; margin-bottom: 8px; font-weight: 600; font-size: 1.05em; color: #1e40af;">${headerText}</div>`);
+        if (processedLines.length > 0) {
+          processedLines.push('<div style="margin: 12px 0; display: block;"></div>');
+        }
+        processedLines.push(`<div style="margin: 0 0 6px 0; display: block; font-weight: 600; font-size: 1.05em; color: #1e40af;">${headerText}</div>`);
+        lastWasHeader = true;
         continue;
       }
       
@@ -340,16 +348,20 @@ class OmanAirportsChatWidget {
         const content = trimmed.replace(/^[•\-]\s+/, '');
         // Convert any remaining bold text in the bullet point
         const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
-        processedLines.push(`<div style="margin: 4px 0; padding-left: 24px; position: relative; line-height: 1.6;">• ${formattedContent}</div>`);
+        processedLines.push(`<div style="margin: 4px 0; padding-left: 24px; display: block; line-height: 1.6;">• ${formattedContent}</div>`);
+        lastWasHeader = false;
         continue;
       }
       
       // Regular line - convert bold text and preserve
       const formattedLine = trimmed.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
-      processedLines.push(`<div style="margin: 4px 0; line-height: 1.6;">${formattedLine}</div>`);
+      // If previous was a header, add a bit less margin
+      const marginTop = lastWasHeader ? '0' : '4px';
+      processedLines.push(`<div style="margin: ${marginTop} 0 4px 0; display: block; line-height: 1.6;">${formattedLine}</div>`);
+      lastWasHeader = false;
     }
     
-    // Join all processed lines
+    // Join all processed lines - each div is block-level so will create line breaks
     result = processedLines.join('');
     
     console.log('🔧 Formatting output:', result);
