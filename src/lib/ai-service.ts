@@ -1137,7 +1137,11 @@ export class AIService {
     const isAirportRelated = this.isAirportRelatedQuestion(message);
     
     // Determine if we have strong knowledge base matches
-    const isHotelQueryForced = message.toLowerCase().includes('hotel') || message.toLowerCase().includes('aerotel');
+    // Exclude sleeping seats/rest areas from hotel detection
+    const lowerMsg = message.toLowerCase();
+    const isSleepingSeatsQuery = lowerMsg.includes('sleeping') && (lowerMsg.includes('seat') || lowerMsg.includes('seats') || lowerMsg.includes('area') || lowerMsg.includes('areas'));
+    const isRestAreaQuery = lowerMsg.includes('rest area') || lowerMsg.includes('rest areas') || lowerMsg.includes('waiting area');
+    const isHotelQueryForced = !isSleepingSeatsQuery && !isRestAreaQuery && (lowerMsg.includes('hotel') || lowerMsg.includes('aerotel') || (lowerMsg.includes('sleep') && (lowerMsg.includes('room') || lowerMsg.includes('accommodation') || lowerMsg.includes('stay'))));
     const isSmokingQueryForced = message.toLowerCase().includes('smoking') || message.toLowerCase().includes('smoke');
     const isWiFiQueryForced = message.toLowerCase().includes('wi-fi') || message.toLowerCase().includes('wifi') ||
                              message.toLowerCase().includes('wireless') || message.toLowerCase().includes('internet') ||
@@ -1821,6 +1825,58 @@ export class AIService {
         sources: [...new Set(sources)],
         kbEntryId: knowledgeEntries.length > 0 ? knowledgeEntries[0].id : undefined
       };
+    }
+
+    // FORCE knowledge base handler for refreshment facilities queries (sleeping seats, waiting areas)
+    // MUST run BEFORE hotel handler to prevent misclassification
+    if (isRefreshmentFacilitiesQuery) {
+      console.log('[AIService] Refreshment facilities query detected, using facilities-specific handler');
+      // Fetch refreshment facilities entries directly from KB
+      const facilitiesEntries = await prisma.knowledgeBase.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { sourceUrl: { contains: 'refreshment-facilities', mode: 'insensitive' } },
+            { category: 'airport_facilities', isActive: true },
+            { subcategory: { contains: 'Sleeping', mode: 'insensitive' } },
+            { subcategory: { contains: 'Waiting', mode: 'insensitive' } },
+            { subcategory: { contains: 'Overnight', mode: 'insensitive' } },
+            { question: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
+            { question: { contains: 'waiting', mode: 'insensitive' }, isActive: true },
+            { question: { contains: 'rest area', mode: 'insensitive' }, isActive: true },
+            { answer: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
+            { answer: { contains: 'refreshment', mode: 'insensitive' }, isActive: true }
+          ]
+        },
+        orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
+        take: 15
+      });
+      
+      if (facilitiesEntries.length > 0) {
+        sources.push('https://www.muscatairport.co.om/content/refreshment-facilities');
+        const processingTime = Date.now() - startTime;
+        
+        // Try to find exact match first
+        const exact = this.findExactQuestionMatch(facilitiesEntries as any, message);
+        let responseMsg = '';
+        
+        if (exact) {
+          responseMsg = this.formatKbAnswer(exact.answer);
+        } else {
+          // Use comprehensive response with facilities entries
+          responseMsg = this.createComprehensiveKnowledgeResponse(message, facilitiesEntries as any);
+        }
+        
+        return {
+          message: responseMsg,
+          success: true,
+          provider: 'refreshment-facilities-knowledge-base',
+          processingTime,
+          knowledgeBaseUsed: true,
+          sources: [...new Set(sources)],
+          kbEntryId: facilitiesEntries.length > 0 ? facilitiesEntries[0].id : undefined
+        };
+      }
     }
 
     // Collect sources for hotel queries before early return
