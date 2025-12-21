@@ -303,20 +303,16 @@ class OmanAirportsChatWidget {
   formatMessageContent(content) {
     if (!content) return '';
     
-    console.log('🔧 BULLETPROOF formatting input:', content);
+    console.log('🔧 Formatting input:', content);
     
     let result = String(content);
     
-    // Step 1: Convert [text](url) to clickable links with inline CSS
+    // Step 1: Convert [text](url) to clickable links
     result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
-      console.log(`🔗 Converting link: "${text}" -> "${url}"`);
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link" style="color: #2563eb; text-decoration: underline; font-weight: 500; cursor: pointer;">${text}</a>`;
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; font-weight: 500;">${text}</a>`;
     });
     
-    // Step 2: Convert **text** to bold with inline CSS (handle multiple bold sections)
-    result = result.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
-    
-    // Step 3: Split into lines and process each line
+    // Step 2: Split into lines for processing
     const lines = result.split('\n');
     const processedLines = [];
     
@@ -324,38 +320,39 @@ class OmanAirportsChatWidget {
       const line = lines[i];
       const trimmed = line.trim();
       
-      // Skip empty lines (they'll be converted to spacing later)
+      // Empty line = spacing
       if (!trimmed) {
-        processedLines.push('');
+        processedLines.push('<div style="margin: 8px 0;"></div>');
         continue;
       }
       
-      // Check if line starts with bullet point (• or -)
+      // Check if line is a section header (entire line is bold text like **📍 Location:**)
+      const boldMatch = trimmed.match(/^\*\*([^*]+)\*\*$/);
+      if (boldMatch) {
+        // This is a section header
+        const headerText = boldMatch[1];
+        processedLines.push(`<div style="margin-top: 16px; margin-bottom: 8px; font-weight: 600; font-size: 1.05em; color: #1e40af;">${headerText}</div>`);
+        continue;
+      }
+      
+      // Check if line starts with bullet point
       if (trimmed.match(/^[•\-]\s+/)) {
         const content = trimmed.replace(/^[•\-]\s+/, '');
-        processedLines.push(`<div style="margin: 4px 0; padding-left: 20px; position: relative; line-height: 1.6;">• ${content}</div>`);
+        // Convert any remaining bold text in the bullet point
+        const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
+        processedLines.push(`<div style="margin: 4px 0; padding-left: 24px; position: relative; line-height: 1.6;">• ${formattedContent}</div>`);
+        continue;
       }
-      // Check if line is a section header (starts with ** and emoji or just bold text)
-      else if (trimmed.match(/^\*\*.*\*\*$/)) {
-        processedLines.push(`<div style="margin-top: 12px; margin-bottom: 6px; font-weight: 600; line-height: 1.6;">${trimmed}</div>`);
-      }
-      // Regular line
-      else {
-        processedLines.push(`<div style="margin: 4px 0; line-height: 1.6;">${trimmed}</div>`);
-      }
+      
+      // Regular line - convert bold text and preserve
+      const formattedLine = trimmed.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
+      processedLines.push(`<div style="margin: 4px 0; line-height: 1.6;">${formattedLine}</div>`);
     }
     
-    // Step 4: Join lines and handle spacing
+    // Join all processed lines
     result = processedLines.join('');
     
-    // Step 5: Convert double empty divs to spacing
-    result = result.replace(/<\/div><div style="margin: 4px 0; line-height: 1.6;"><\/div>/g, '<div style="margin: 8px 0;"></div>');
-    result = result.replace(/<div style="margin: 4px 0; line-height: 1.6;"><\/div>/g, '<div style="margin: 8px 0;"></div>');
-    
-    // Step 6: Clean up any empty divs
-    result = result.replace(/<div[^>]*><\/div>/g, '');
-    
-    console.log('🔧 BULLETPROOF formatting output:', result);
+    console.log('🔧 Formatting output:', result);
     
     return result;
   }

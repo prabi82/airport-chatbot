@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sleeping Seats Formatting Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .chat-message {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sleeping Seats Response Formatting Test</h1>
+  
+  <div class="chat-message">
+    <div id="test-content"></div>
+  </div>
+
+  <script>
+    const testContent = `**Sleeping Seats at Muscat International Airport**
+
+✅ **Yes, sleeping seats are available!**
+
+**📍 Location:**
+Sleeping seats can be found at the end of the departure hall.
+
+**💰 Cost:**
+The seats are **free of charge** on a first come, first served basis.
+
+**💡 Additional Information:**
+• Available for all passengers
+• No reservation required
+• Comfortable seating for rest and relaxation
+• Suitable for waiting between flights or overnight stays
+
+**📞 For More Information:**
+• Airport Support: +968 24351234
+• Visit the Airport Information Desk for directions to the sleeping seats area`;
+
+    function formatMessageContent(content) {
+      if (!content) return '';
+      
+      let result = String(content);
+      
+      // Step 1: Convert [text](url) to clickable links
+      result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline; font-weight: 500;">${text}</a>`;
+      });
+      
+      // Step 2: Split into lines for processing
+      const lines = result.split('\n');
+      const processedLines = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        
+        // Empty line = spacing
+        if (!trimmed) {
+          processedLines.push('<div style="margin: 8px 0;"></div>');
+          continue;
+        }
+        
+        // Check if line is a section header (entire line is bold text like **📍 Location:**)
+        const boldMatch = trimmed.match(/^\*\*([^*]+)\*\*$/);
+        if (boldMatch) {
+          // This is a section header
+          const headerText = boldMatch[1];
+          processedLines.push(`<div style="margin-top: 16px; margin-bottom: 8px; font-weight: 600; font-size: 1.05em; color: #1e40af;">${headerText}</div>`);
+          continue;
+        }
+        
+        // Check if line starts with bullet point
+        if (trimmed.match(/^[•\-]\s+/)) {
+          const content = trimmed.replace(/^[•\-]\s+/, '');
+          // Convert any remaining bold text in the bullet point
+          const formattedContent = content.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
+          processedLines.push(`<div style="margin: 4px 0; padding-left: 24px; position: relative; line-height: 1.6;">• ${formattedContent}</div>`);
+          continue;
+        }
+        
+        // Regular line - convert bold text and preserve
+        const formattedLine = trimmed.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 600; color: #1e40af;">$1</strong>');
+        processedLines.push(`<div style="margin: 4px 0; line-height: 1.6;">${formattedLine}</div>`);
+      }
+      
+      // Join all processed lines
+      return processedLines.join('');
+    }
+
+    document.getElementById('test-content').innerHTML = formatMessageContent(testContent);
+  </script>
+</body>
+</html>
+
