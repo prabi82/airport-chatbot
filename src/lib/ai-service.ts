@@ -1376,57 +1376,6 @@ export class AIService {
       }
     }
     
-    // FORCE knowledge base handler for refreshment facilities queries (sleeping seats, waiting areas)
-    if (isRefreshmentFacilitiesQuery) {
-      console.log('[AIService] Refreshment facilities query detected, using facilities-specific handler');
-      // Fetch refreshment facilities entries directly from KB
-      const facilitiesEntries = await prisma.knowledgeBase.findMany({
-        where: {
-          isActive: true,
-          OR: [
-            { sourceUrl: { contains: 'refreshment-facilities', mode: 'insensitive' } },
-            { category: 'airport_facilities', isActive: true },
-            { subcategory: { contains: 'Sleeping', mode: 'insensitive' } },
-            { subcategory: { contains: 'Waiting', mode: 'insensitive' } },
-            { subcategory: { contains: 'Overnight', mode: 'insensitive' } },
-            { question: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
-            { question: { contains: 'waiting', mode: 'insensitive' }, isActive: true },
-            { question: { contains: 'rest area', mode: 'insensitive' }, isActive: true },
-            { answer: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
-            { answer: { contains: 'refreshment', mode: 'insensitive' }, isActive: true }
-          ]
-        },
-        orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
-        take: 15
-      });
-      
-      if (facilitiesEntries.length > 0) {
-        sources.push('https://www.muscatairport.co.om/content/refreshment-facilities');
-        const processingTime = Date.now() - startTime;
-        
-        // Try to find exact match first
-        const exact = this.findExactQuestionMatch(facilitiesEntries as any, message);
-        let responseMsg = '';
-        
-        if (exact) {
-          responseMsg = this.formatKbAnswer(exact.answer);
-        } else {
-          // Use comprehensive response with facilities entries
-          responseMsg = this.createComprehensiveKnowledgeResponse(message, facilitiesEntries as any);
-        }
-        
-        return {
-          message: responseMsg,
-          success: true,
-          provider: 'refreshment-facilities-knowledge-base',
-          processingTime,
-          knowledgeBaseUsed: true,
-          sources: [...new Set(sources)],
-          kbEntryId: facilitiesEntries.length > 0 ? facilitiesEntries[0].id : undefined
-        };
-      }
-    }
-    
     if (isSpaQueryForced) {
       // Fetch ONLY spa-related entries directly from KB
       const spaOnlyEntries = await prisma.knowledgeBase.findMany({
