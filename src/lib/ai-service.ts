@@ -1187,7 +1187,10 @@ export class AIService {
                                (messageLower.includes('lounge') && (messageLower.includes('price') || messageLower.includes('cost') || messageLower.includes('charges')));
     
     // Detect refreshment facilities, sleeping seats, and waiting area queries
-    const isRefreshmentFacilitiesQuery = messageLower.includes('sleeping') || messageLower.includes('sleep') ||
+    // PRIORITY: Check for "sleeping seats" FIRST to avoid hotel misclassification
+    const hasSleepingSeats = messageLower.includes('sleeping') && (messageLower.includes('seat') || messageLower.includes('seats'));
+    const isRefreshmentFacilitiesQuery = hasSleepingSeats || // Highest priority - exact match
+                                        (messageLower.includes('sleeping') && !messageLower.includes('room') && !messageLower.includes('accommodation') && !messageLower.includes('hotel')) || // sleeping but NOT hotel context
                                         messageLower.includes('rest area') || messageLower.includes('rest areas') ||
                                         messageLower.includes('waiting area') || messageLower.includes('waiting areas') ||
                                         messageLower.includes('refreshment facilities') || messageLower.includes('refreshment') ||
@@ -1302,6 +1305,58 @@ export class AIService {
         kbEntryId: transportEntries.length > 0 ? transportEntries[0].id : undefined
       };
     }
+    // FORCE knowledge base handler for refreshment facilities queries (sleeping seats, waiting areas)
+    // MUST run BEFORE all other handlers to prevent misclassification
+    if (isRefreshmentFacilitiesQuery) {
+      console.log('[AIService] Refreshment facilities query detected, using facilities-specific handler');
+      // Fetch refreshment facilities entries directly from KB
+      const facilitiesEntries = await prisma.knowledgeBase.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { sourceUrl: { contains: 'refreshment-facilities', mode: 'insensitive' } },
+            { category: 'airport_facilities', isActive: true },
+            { subcategory: { contains: 'Sleeping', mode: 'insensitive' } },
+            { subcategory: { contains: 'Waiting', mode: 'insensitive' } },
+            { subcategory: { contains: 'Overnight', mode: 'insensitive' } },
+            { question: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
+            { question: { contains: 'waiting', mode: 'insensitive' }, isActive: true },
+            { question: { contains: 'rest area', mode: 'insensitive' }, isActive: true },
+            { answer: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
+            { answer: { contains: 'refreshment', mode: 'insensitive' }, isActive: true }
+          ]
+        },
+        orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
+        take: 15
+      });
+      
+      if (facilitiesEntries.length > 0) {
+        sources.push('https://www.muscatairport.co.om/content/refreshment-facilities');
+        const processingTime = Date.now() - startTime;
+        
+        // Try to find exact match first
+        const exact = this.findExactQuestionMatch(facilitiesEntries as any, message);
+        let responseMsg = '';
+        
+        if (exact) {
+          responseMsg = this.formatKbAnswer(exact.answer);
+        } else {
+          // Use comprehensive response with facilities entries
+          responseMsg = this.createComprehensiveKnowledgeResponse(message, facilitiesEntries as any);
+        }
+        
+        return {
+          message: responseMsg,
+          success: true,
+          provider: 'refreshment-facilities-knowledge-base',
+          processingTime,
+          knowledgeBaseUsed: true,
+          sources: [...new Set(sources)],
+          kbEntryId: facilitiesEntries.length > 0 ? facilitiesEntries[0].id : undefined
+        };
+      }
+    }
+
     // FORCE knowledge base handler for lounge queries (especially pricing)
     if (isLoungeQueryForced) {
       console.log('[AIService] Lounge query detected, using lounge-specific handler');
