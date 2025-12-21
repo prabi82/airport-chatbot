@@ -1182,8 +1182,20 @@ export class AIService {
                                messageLower.includes('prime class') ||
                                (messageLower.includes('lounge') && (messageLower.includes('price') || messageLower.includes('cost') || messageLower.includes('charges')));
     
+    // Detect refreshment facilities, sleeping seats, and waiting area queries
+    const isRefreshmentFacilitiesQuery = messageLower.includes('sleeping') || messageLower.includes('sleep') ||
+                                        messageLower.includes('rest area') || messageLower.includes('rest areas') ||
+                                        messageLower.includes('waiting area') || messageLower.includes('waiting areas') ||
+                                        messageLower.includes('refreshment facilities') || messageLower.includes('refreshment') ||
+                                        (messageLower.includes('arrive') && (messageLower.includes('wait') || messageLower.includes('sleep') || messageLower.includes('rest'))) ||
+                                        (messageLower.includes('wait') && (messageLower.includes('friend') || messageLower.includes('other flight'))) ||
+                                        (messageLower.includes('seats') && (messageLower.includes('sleep') || messageLower.includes('rest'))) ||
+                                        messageLower.includes('nap area') || messageLower.includes('nap areas') ||
+                                        messageLower.includes('overnight stay') || messageLower.includes('stay overnight') ||
+                                        (messageLower.includes('00:30') || messageLower.includes('midnight') || messageLower.includes('late night'));
+    
     // Note: isFlightQueryForced is already defined above (before greeting handler)
-    const hasStrongKnowledgeMatch = (knowledgeEntries.length > 0 && knowledgeEntries[0].relevanceScore > 15) || isHotelQueryForced || isSmokingQueryForced || isBankingQueryForced || isCurrencyExchangeQueryForced || isEGatesQueryForced || isChildrenTravelQueryForced || isWiFiQueryForced || isSpaQueryForced || isCarRentalQueryForced || isTaxiQueryForced || isBusShuttleQueryForced || isSecurityQueryForced || isParkingQueryForced || isFlightQueryForced || isLoungeQueryForced;
+    const hasStrongKnowledgeMatch = (knowledgeEntries.length > 0 && knowledgeEntries[0].relevanceScore > 15) || isHotelQueryForced || isSmokingQueryForced || isBankingQueryForced || isCurrencyExchangeQueryForced || isEGatesQueryForced || isChildrenTravelQueryForced || isWiFiQueryForced || isSpaQueryForced || isCarRentalQueryForced || isTaxiQueryForced || isBusShuttleQueryForced || isSecurityQueryForced || isParkingQueryForced || isFlightQueryForced || isLoungeQueryForced || isRefreshmentFacilitiesQuery;
 
     // KB-STRICT (env-controlled): if top official KB hit is strong for a strict intent, short-circuit
     if (knowledgeEntries.length > 0) {
@@ -1356,6 +1368,57 @@ export class AIService {
           knowledgeBaseUsed: true,
           sources: [...new Set(sources)],
           kbEntryId: entriesToUse.length > 0 ? entriesToUse[0].id : undefined
+        };
+      }
+    }
+    
+    // FORCE knowledge base handler for refreshment facilities queries (sleeping seats, waiting areas)
+    if (isRefreshmentFacilitiesQuery) {
+      console.log('[AIService] Refreshment facilities query detected, using facilities-specific handler');
+      // Fetch refreshment facilities entries directly from KB
+      const facilitiesEntries = await prisma.knowledgeBase.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { sourceUrl: { contains: 'refreshment-facilities', mode: 'insensitive' } },
+            { category: 'airport_facilities', isActive: true },
+            { subcategory: { contains: 'Sleeping', mode: 'insensitive' } },
+            { subcategory: { contains: 'Waiting', mode: 'insensitive' } },
+            { subcategory: { contains: 'Overnight', mode: 'insensitive' } },
+            { question: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
+            { question: { contains: 'waiting', mode: 'insensitive' }, isActive: true },
+            { question: { contains: 'rest area', mode: 'insensitive' }, isActive: true },
+            { answer: { contains: 'sleeping', mode: 'insensitive' }, isActive: true },
+            { answer: { contains: 'refreshment', mode: 'insensitive' }, isActive: true }
+          ]
+        },
+        orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
+        take: 15
+      });
+      
+      if (facilitiesEntries.length > 0) {
+        sources.push('https://www.muscatairport.co.om/content/refreshment-facilities');
+        const processingTime = Date.now() - startTime;
+        
+        // Try to find exact match first
+        const exact = this.findExactQuestionMatch(facilitiesEntries as any, message);
+        let responseMsg = '';
+        
+        if (exact) {
+          responseMsg = this.formatKbAnswer(exact.answer);
+        } else {
+          // Use comprehensive response with facilities entries
+          responseMsg = this.createComprehensiveKnowledgeResponse(message, facilitiesEntries as any);
+        }
+        
+        return {
+          message: responseMsg,
+          success: true,
+          provider: 'refreshment-facilities-knowledge-base',
+          processingTime,
+          knowledgeBaseUsed: true,
+          sources: [...new Set(sources)],
+          kbEntryId: facilitiesEntries.length > 0 ? facilitiesEntries[0].id : undefined
         };
       }
     }
